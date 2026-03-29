@@ -74,7 +74,7 @@ export function setLanguage(lang) {
  * - data-i18n в <option> внутри <select>
  */
 export function applyTranslations() {
-    // 1. Обычный текст
+    // 1. Обычный текст (data-i18n)
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[key] && translations[key][currentLang]) {
@@ -90,7 +90,7 @@ export function applyTranslations() {
         }
     });
 
-    // 3. Опции в select
+    // 3. Опции в <select>
     document.querySelectorAll('select').forEach(select => {
         Array.from(select.options).forEach(option => {
             if (option.dataset.i18n) {
@@ -102,8 +102,14 @@ export function applyTranslations() {
         });
     });
 
-    // 4. Дополнительно: переводим всё, что может быть внутри динамически созданных элементов
-    // (на случай, если где-то data-i18n на span внутри кнопки)
+    // 4. Дополнительно: переводим кнопки и элементы, которые могли быть созданы динамически
+    // (на всякий случай)
+    document.querySelectorAll('button[data-i18n], .search-btn[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[key] && translations[key][currentLang]) {
+            el.textContent = translations[key][currentLang];
+        }
+    });
 }
 
 /**

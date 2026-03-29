@@ -8,6 +8,7 @@ import { initTheme, updateThemeText } from './theme.js';
 import { initSidebar } from './sidebar.js';
 import { initContacts } from './contacts.js';
 import { initProfile } from './profile.js';
+import { initPeer } from './peer.js';
 
 
 /**
@@ -28,6 +29,8 @@ async function startApp() {
 
     // 4. Модуль профиля пользователя
     initProfile();
+
+    await initPeer();
 
     // 5. Модуль работы с контактами
     initContacts();

@@ -199,6 +199,18 @@
     "en": "Search",
     "de": "Suchen",
     "fr": "Rechercher"
+  },
+  "loading": {
+    "ru": "Подключение...",
+    "en": "Connecting...",
+    "de": "Verbinden...",
+    "fr": "Connexion..."
+  },
+  "peer-init-error": {
+    "ru": "Не удалось подключиться к PeerJS. Проверьте интернет.",
+    "en": "Failed to connect to PeerJS. Check your internet.",
+    "de": "Verbindung zu PeerJS fehlgeschlagen. Überprüfen Sie Ihre Internetverbindung.",
+    "fr": "Échec de la connexion à PeerJS. Vérifiez votre connexion internet."
   }
 
 }
