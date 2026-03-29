@@ -91,6 +91,7 @@ startApp();
 
 
 
+
 document.addEventListener('keydown', (e) => {
     // Проверяем комбинацию Shift + F8
     if (e.shiftKey && e.key === 'F8') {

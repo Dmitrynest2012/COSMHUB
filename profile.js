@@ -1,15 +1,10 @@
-// profile.js — Редактирование профиля
+// profile.js — Редактирование профиля + интеграция с реальным PeerJS
 
 import { applyTranslations, getTranslation } from './i18n.js';
 import { initPeer, getMyPeerId } from './peer.js';
 
 // Глобальная переменная для хранения данных профиля
 let currentProfile = {};
-
-/**
- * Генерирует реалистичный Peer ID (для будущего P2P/WebRTC чата)
- */
-
 
 /**
  * Основная инициализация профиля
@@ -56,11 +51,34 @@ export function initProfile() {
         }
     });
 
-    // Генерация Peer ID
-    generateBtn.addEventListener('click', () => {
+    // === ГЕНЕРАЦИЯ / ПОЛУЧЕНИЕ РЕАЛЬНОГО PEER ID ===
+    generateBtn.addEventListener('click', async () => {
         const peerIdInput = document.getElementById('profile-peer-id');
-        const newId = generatePeerId();
-        peerIdInput.value = newId;
+        const statusText = generateBtn; // можно добавить индикатор загрузки позже
+
+        try {
+            generateBtn.disabled = true;
+            generateBtn.textContent = getTranslation('loading') || 'Подключение...';
+
+            // Инициализируем PeerJS (если ещё не инициализирован)
+            await initPeer();
+
+            const realPeerId = getMyPeerId();
+            
+            if (realPeerId) {
+                peerIdInput.value = realPeerId;
+                currentProfile.peerId = realPeerId; // сразу сохраняем в текущий профиль
+            } else {
+                throw new Error('Не удалось получить Peer ID');
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert(getTranslation('peer-init-error') || 'Не удалось подключиться к PeerJS. Проверьте интернет.');
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.textContent = getTranslation('generate-button') || 'Получить';
+        }
     });
 
     // Сохранение профиля
@@ -83,8 +101,8 @@ function openProfileModal() {
     document.getElementById('profile-gender').value = currentProfile.gender || 'male';
     document.getElementById('profile-birthdate').value = currentProfile.birthdate || '';
     
-    // Пиринг ID
-    peerIdInput.value = currentProfile.peerId || '';
+    // Пиринг ID — показываем реальный, если есть
+    peerIdInput.value = currentProfile.peerId || getMyPeerId() || '';
 
     // URL аватара
     urlInput.value = currentProfile.avatarUrl || '';
@@ -93,19 +111,18 @@ function openProfileModal() {
     if (currentProfile.avatarUrl) {
         preview.style.backgroundImage = `url(${currentProfile.avatarUrl})`;
         preview.style.backgroundSize = 'cover';
+        preview.style.backgroundPosition = 'center';
     } else {
         preview.style.backgroundImage = '';
         preview.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
     }
 
     modal.style.display = 'flex';
-
-    // Применяем переводы (включая placeholder и текст кнопки)
     applyTranslations();
 }
 
 /**
- * Сохраняет профиль и делает данные глобально доступными
+ * Сохраняет профиль
  */
 function saveProfile() {
     currentProfile = {
@@ -119,7 +136,7 @@ function saveProfile() {
     };
 
     localStorage.setItem('profile', JSON.stringify(currentProfile));
-    window.currentProfile = currentProfile;   // Глобальная переменная
+    window.currentProfile = currentProfile;
 
     renderHeaderProfile();
     document.getElementById('profile-modal').style.display = 'none';
