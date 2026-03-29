@@ -1,16 +1,15 @@
-// peer.js — Закреплённый Peer ID + авто-реконнект
+// peer.js — Улучшенная версия с авто-реконнектом к PeerJS Cloud
 
 let peer = null;
 let currentPeerId = null;
 let connections = new Map();
+let reconnectTimer = null;
 
-// Загружаем сохранённый Peer ID из профиля
 function getSavedPeerId() {
-    const savedProfile = localStorage.getItem('profile');
-    if (savedProfile) {
+    const saved = localStorage.getItem('profile');
+    if (saved) {
         try {
-            const profile = JSON.parse(savedProfile);
-            return profile.peerId || null;
+            return JSON.parse(saved).peerId || null;
         } catch (e) {}
     }
     return null;
@@ -24,17 +23,14 @@ export function initPeer() {
         }
 
         const savedId = getSavedPeerId();
+        const options = savedId ? { id: savedId, debug: 1 } : { debug: 1 };
 
-        // Если есть сохранённый ID — используем его (это главное!)
-        const peerOptions = savedId 
-            ? { id: savedId, debug: 2 }
-            : { debug: 2 };
-
-        peer = new Peer(peerOptions, {
+        peer = new Peer(options, {
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' }
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' }
                 ]
             }
         });
@@ -43,7 +39,6 @@ export function initPeer() {
             currentPeerId = id;
             console.log('%c✅ PeerJS подключён. Твой Peer ID:', 'color:#10b981; font-weight:700', id);
 
-            // Если ID был сгенерирован заново — сохраняем его в профиль
             if (!savedId) {
                 savePeerIdToProfile(id);
             }
@@ -56,10 +51,18 @@ export function initPeer() {
         });
 
         peer.on('error', (err) => {
-            console.error('PeerJS error:', err.type, err);
+            console.error('PeerJS error:', err.type, err.message);
             if (err.type === 'unavailable-id') {
-                alert('Этот Peer ID уже используется другим пользователем. Пожалуйста, сгенерируйте новый в профиле.');
+                alert('Этот Peer ID уже занят. Сгенерируйте новый в настройках профиля.');
+            } else if (err.type === 'network' || err.message.includes('Lost connection')) {
+                console.warn('Потеряно соединение с PeerJS сервером. Пытаемся переподключиться...');
+                attemptReconnect();
             }
+        });
+
+        peer.on('disconnected', () => {
+            console.warn('PeerJS disconnected от сервера. Переподключаемся...');
+            attemptReconnect();
         });
 
         peer.on('connection', (conn) => {
@@ -69,11 +72,20 @@ export function initPeer() {
     });
 }
 
+function attemptReconnect() {
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    
+    reconnectTimer = setTimeout(() => {
+        if (peer) {
+            peer.reconnect();
+        }
+    }, 3000); // пытаемся переподключиться через 3 секунды
+}
+
 function savePeerIdToProfile(newId) {
     let profile = {};
     const saved = localStorage.getItem('profile');
     if (saved) profile = JSON.parse(saved);
-
     profile.peerId = newId;
     localStorage.setItem('profile', JSON.stringify(profile));
     window.currentProfile = profile;
@@ -83,19 +95,18 @@ export function getMyPeerId() {
     return currentPeerId || localStorage.getItem('myPeerId') || getSavedPeerId();
 }
 
-/* Остальные функции (ensureConnection, connectToPeer, sendMessage и т.д.) оставляем как в предыдущей версии */
-
+// Авто-реконнект к конкретному контакту
 export async function ensureConnection(targetPeerId) {
     let conn = connections.get(targetPeerId);
     if (conn && conn.open) return conn;
 
-    console.log(`🔄 Реконнект к ${targetPeerId}...`);
+    console.log(`🔄 Реконнект к контакту ${targetPeerId}...`);
     try {
         conn = await connectToPeer(targetPeerId);
         connections.set(targetPeerId, conn);
         return conn;
     } catch (err) {
-        console.error('Реконнект не удался:', err);
+        console.error('Не удалось восстановить соединение с контактом:', err);
         throw err;
     }
 }
@@ -150,7 +161,10 @@ function setupConnection(conn) {
 
 export function sendMessage(targetPeerId, text) {
     const conn = connections.get(targetPeerId);
-    if (!conn || !conn.open) return false;
+    if (!conn || !conn.open) {
+        console.warn('Нет активного соединения с', targetPeerId);
+        return false;
+    }
 
     conn.send({ type: 'message', message: { text, timestamp: Date.now() } });
     return true;
