@@ -57,17 +57,20 @@ function renderContacts() {
 
 // ====================== Привязка событий ======================
 function attachContactEvents() {
+    // Кнопка "Добавить контакт"
     const addBtn = document.getElementById('add-contact-btn');
     if (addBtn) {
         addBtn.removeEventListener('click', openAddContactModal);
         addBtn.addEventListener('click', openAddContactModal);
     }
 
+    // Кнопки удаления контактов
     document.querySelectorAll('.remove-contact-btn').forEach(btn => {
         btn.removeEventListener('click', handleRemoveClick);
         btn.addEventListener('click', handleRemoveClick);
     });
 
+    // Клик по карточке контакта → открытие чата
     document.querySelectorAll('.contact-card').forEach(card => {
         card.removeEventListener('click', handleContactClick);
         card.addEventListener('click', handleContactClick);
@@ -75,7 +78,7 @@ function attachContactEvents() {
 }
 
 function handleRemoveClick(e) {
-    e.stopImmediatePropagation();
+    e.stopImmediatePropagation(); // чтобы не открывался чат при удалении
     const index = parseInt(e.currentTarget.dataset.index);
     if (!isNaN(index)) {
         removeContact(index);
@@ -83,12 +86,14 @@ function handleRemoveClick(e) {
 }
 
 function handleContactClick(e) {
+    // Если кликнули по кнопке удаления — игнорируем
     if (e.target.classList.contains('remove-contact-btn')) return;
 
     const peerId = e.currentTarget.dataset.peerId;
     const contact = contacts.find(c => c.peerId === peerId);
 
     if (contact) {
+        // Динамически импортируем chat.js и открываем чат
         import('./chat.js')
             .then(module => {
                 module.openChat(peerId, contact);
@@ -135,10 +140,6 @@ async function searchPeer(peerIdStr) {
         const conn = await connectToPeer(trimmedId);
 
         console.log('✅ Соединение успешно установлено с:', trimmedId);
-
-        // === ИСПРАВЛЕНИЕ: сразу запрашиваем профиль ===
-        conn.send({ type: 'getProfile' });
-        console.log('📤 Запрос профиля отправлен');
 
         // Ждём ответ с профилем
         const profilePromise = new Promise((resolve) => {
@@ -243,6 +244,7 @@ export function initContacts() {
     loadContacts();
     renderContacts();
 
+    // Обработчики модального окна
     const modal = document.getElementById('add-contact-modal');
     const closeBtn = document.getElementById('add-contact-close');
     const searchBtn = document.getElementById('search-peer-btn');
@@ -258,6 +260,7 @@ export function initContacts() {
         });
     }
 
+    // Поиск
     if (searchBtn && searchInput) {
         searchBtn.addEventListener('click', () => searchPeer(searchInput.value));
         searchInput.addEventListener('keypress', (e) => {
