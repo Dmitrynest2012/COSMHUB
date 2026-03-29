@@ -12,7 +12,7 @@ let messages = {}; // peerId → массив сообщений
 export function openChat(peerId, contact) {
     currentChatPeerId = peerId;
 
-    // Подсвечиваем активный контакт в сайдбаре
+    // Подсвечиваем активный контакт
     highlightActiveContact(peerId);
 
     const mainContent = document.getElementById('main-content');
@@ -20,7 +20,6 @@ export function openChat(peerId, contact) {
 
     let html = `
         <div class="chat-window">
-            <!-- Заголовок чата -->
             <div class="chat-header">
                 <div class="chat-contact-info">
                     <div class="chat-avatar" style="${contact.avatarUrl ? `background-image: url(${contact.avatarUrl}); background-size: cover;` : 'background: linear-gradient(135deg, #6b7ae3, #a78bfa);'}"></div>
@@ -32,10 +31,8 @@ export function openChat(peerId, contact) {
                 <button id="close-chat-btn" class="chat-close-btn">✕</button>
             </div>
 
-            <!-- Область сообщений -->
             <div id="chat-messages" class="chat-messages"></div>
 
-            <!-- Поле ввода -->
             <div class="chat-input-area">
                 <textarea id="chat-input" class="chat-textarea" placeholder="Напишите сообщение..."></textarea>
                 <button id="send-message-btn" class="send-btn">Отправить</button>
@@ -51,7 +48,7 @@ export function openChat(peerId, contact) {
 }
 
 /**
- * Подсветка активного контакта
+ * Подсветка активного контакта в сайдбаре
  */
 function highlightActiveContact(peerId) {
     document.querySelectorAll('.contact-card').forEach(card => {
@@ -96,7 +93,7 @@ function renderMessages(peerId) {
 }
 
 /**
- * Добавление нового сообщения (используется и для своих, и для входящих)
+ * Добавление сообщения (для своих и входящих)
  */
 export function addMessage(peerId, text, isMine = true) {
     if (!messages[peerId]) messages[peerId] = [];
@@ -107,21 +104,20 @@ export function addMessage(peerId, text, isMine = true) {
         from: isMine ? window.myPeerId : peerId
     });
 
-    // Если чат сейчас открыт — сразу обновляем
     if (currentChatPeerId === peerId) {
         renderMessages(peerId);
     }
 }
 
 /**
- * Глобальная функция для обработки входящих сообщений из peer.js
+ * Глобальная функция для приёма сообщений из peer.js
  */
 window.handleIncomingMessage = (peerId, data) => {
     addMessage(peerId, data.text, false);
 };
 
 /**
- * Настройка слушателей чата
+ * Настройка обработчиков чата
  */
 function setupChatListeners() {
     const input = document.getElementById('chat-input');
@@ -141,19 +137,15 @@ function setupChatListeners() {
         }
     };
 
-    if (sendBtn) sendBtn.addEventListener('click', send);
-    if (input) {
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                send();
-            }
-        });
-    }
+    sendBtn?.addEventListener('click', send);
+    input?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            send();
+        }
+    });
 
-    if (closeBtn) {
-        closeBtn.addEventListener('click', closeChat);
-    }
+    closeBtn?.addEventListener('click', closeChat);
 }
 
 /**
@@ -165,7 +157,6 @@ function closeChat() {
         card.classList.remove('active-contact');
     });
 
-    // Возвращаем приветственный экран
     const mainContent = document.getElementById('main-content');
     if (mainContent) {
         mainContent.innerHTML = `
