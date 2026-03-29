@@ -23,9 +23,10 @@ export function initPeer() {
         }
 
         const savedId = getSavedPeerId();
-        const options = savedId ? { id: savedId, debug: 1 } : { debug: 1 };
 
-        peer = new Peer(options, {
+        // === ИСПРАВЛЕНИЕ: один объект options ===
+        const peerOptions = {
+            debug: 1,
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -33,7 +34,13 @@ export function initPeer() {
                     { urls: 'stun:stun2.l.google.com:19302' }
                 ]
             }
-        });
+        };
+
+        if (savedId) {
+            peerOptions.id = savedId;
+        }
+
+        peer = new Peer(peerOptions);
 
         peer.on('open', (id) => {
             currentPeerId = id;
@@ -79,7 +86,7 @@ function attemptReconnect() {
         if (peer) {
             peer.reconnect();
         }
-    }, 3000); // пытаемся переподключиться через 3 секунды
+    }, 3000);
 }
 
 function savePeerIdToProfile(newId) {
@@ -95,7 +102,6 @@ export function getMyPeerId() {
     return currentPeerId || localStorage.getItem('myPeerId') || getSavedPeerId();
 }
 
-// Авто-реконнект к конкретному контакту
 export async function ensureConnection(targetPeerId) {
     let conn = connections.get(targetPeerId);
     if (conn && conn.open) return conn;
