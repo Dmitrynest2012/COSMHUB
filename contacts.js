@@ -98,10 +98,9 @@ function openAddContactModal() {
     applyTranslations();
 }
 
-// ====================== РЕАЛЬНЫЙ ПОИСК ПО PEER ID ======================
+// ====================== РЕАЛЬНЫЙ ПОИСК С ОБМЕНОМ ПРОФИЛЯМИ ======================
 async function searchPeer(peerIdStr) {
     const trimmedId = (peerIdStr || '').trim();
-    
     if (!trimmedId) {
         alert(getTranslation('enter-peer-id') || 'Введите Peer ID');
         return;
@@ -113,24 +112,58 @@ async function searchPeer(peerIdStr) {
     if (resultContainer) resultContainer.style.display = 'none';
 
     try {
-        console.log('⏳ Устанавливаем соединение через PeerJS...');
-
         const conn = await connectToPeer(trimmedId);
 
         console.log('✅ Соединение успешно установлено с:', trimmedId);
 
-        // Заполняем карточку результата
+        // Ждём ответ с профилем (до 5 секунд)
+        const profilePromise = new Promise((resolve) => {
+            let timeout = setTimeout(() => resolve(null), 5000);
+
+            conn.on('data', (data) => {
+                if (data.type === 'profileResponse' && data.profile) {
+                    clearTimeout(timeout);
+                    resolve(data.profile);
+                }
+            });
+        });
+
+        const remoteProfile = await profilePromise;
+
+        // Заполняем карточку
         const resultAvatar = document.getElementById('result-avatar');
         const resultName = document.getElementById('result-name');
         const resultPeerIdEl = document.getElementById('result-peer-id');
         const resultStatus = document.getElementById('result-status');
         const addBtn = document.getElementById('add-contact-confirm-btn');
 
+        // Аватар
         if (resultAvatar) {
-            resultAvatar.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
+            if (remoteProfile && remoteProfile.avatarUrl) {
+                resultAvatar.style.backgroundImage = `url(${remoteProfile.avatarUrl})`;
+                resultAvatar.style.backgroundSize = 'cover';
+                resultAvatar.style.backgroundPosition = 'center';
+            } else {
+                resultAvatar.style.backgroundImage = '';
+                resultAvatar.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
+            }
         }
-        if (resultName) resultName.textContent = 'Пользователь онлайн';
+
+        // Имя
+        if (resultName) {
+            const fullName = [
+                remoteProfile?.surname,
+                remoteProfile?.name,
+                remoteProfile?.patronymic
+            ].filter(Boolean).join(' ') || 'Пользователь онлайн';
+
+            resultName.textContent = fullName;
+        }
+
+        // Peer ID
         if (resultPeerIdEl) resultPeerIdEl.textContent = trimmedId;
+
+        // Статус
         if (resultStatus) {
             resultStatus.textContent = getTranslation('status-online') || 'В сети';
             resultStatus.className = 'status-text status-online';
@@ -138,7 +171,7 @@ async function searchPeer(peerIdStr) {
 
         if (resultContainer) resultContainer.style.display = 'block';
 
-        // Кнопка "Добавить" — сбрасываем предыдущие обработчики
+        // Кнопка "Добавить"
         if (addBtn) {
             const newAddBtn = addBtn.cloneNode(true);
             addBtn.parentNode.replaceChild(newAddBtn, addBtn);
@@ -146,10 +179,10 @@ async function searchPeer(peerIdStr) {
             newAddBtn.addEventListener('click', () => {
                 addContact({
                     peerId: trimmedId,
-                    name: 'Пользователь',
-                    surname: '',
-                    patronymic: '',
-                    avatarUrl: ''
+                    name: remoteProfile?.name || '',
+                    surname: remoteProfile?.surname || '',
+                    patronymic: remoteProfile?.patronymic || '',
+                    avatarUrl: remoteProfile?.avatarUrl || ''
                 });
                 document.getElementById('add-contact-modal').style.display = 'none';
             });
@@ -157,18 +190,9 @@ async function searchPeer(peerIdStr) {
 
     } catch (err) {
         console.error('❌ Ошибка поиска:', err);
-        console.error('Тип ошибки:', err.type || 'unknown');
-        console.error('Сообщение:', err.message);
-
-        let userMessage = getTranslation('peer-not-found') || 'Не удалось найти пользователя';
-
-        if (err.message?.includes('timeout') || err.type === 'peer-unavailable') {
-            userMessage = getTranslation('peer-offline') || 'Пользователь не в сети или Peer ID неверный';
-        } else if (err.message) {
-            userMessage = err.message;
-        }
-
-        alert(userMessage);
+        let msg = getTranslation('peer-offline') || 'Пользователь не в сети или Peer ID неверный';
+        if (err.message) msg = err.message;
+        alert(msg);
     }
 }
 
