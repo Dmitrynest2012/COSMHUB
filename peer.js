@@ -1,10 +1,13 @@
-// peer.js — Стабильная версия для GitHub Pages + PeerJS Cloud
+// peer.js — Стабильная версия с fallback на новый ID
 
 let peer = null;
 let currentPeerId = null;
 let connections = new Map();
 let reconnectTimer = null;
 
+/**
+ * Получаем сохранённый Peer ID из профиля
+ */
 function getSavedPeerId() {
     const saved = localStorage.getItem('profile');
     if (saved) {
@@ -15,6 +18,40 @@ function getSavedPeerId() {
     return null;
 }
 
+/**
+ * Создание Peer
+ */
+function createPeer(id = null) {
+    const peerOptions = {
+        host: '0.peerjs.com',
+        port: 443,
+        path: '/',
+        secure: true,
+        debug: 2,
+        pingInterval: 5000,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                { urls: 'stun:stun2.l.google.com:19302' },
+                { urls: 'stun:stun3.l.google.com:19302' }
+            ]
+        }
+    };
+
+    if (id) {
+        peerOptions.id = id;
+        console.log('🔄 Пытаемся использовать сохранённый Peer ID:', id);
+    } else {
+        console.log('🆕 Генерируем новый Peer ID...');
+    }
+
+    return new Peer(peerOptions);
+}
+
+/**
+ * Инициализация Peer с fallback
+ */
 export function initPeer() {
     return new Promise((resolve, reject) => {
         if (peer && !peer.destroyed) {
@@ -24,71 +61,75 @@ export function initPeer() {
 
         const savedId = getSavedPeerId();
 
-        const peerOptions = {
-            host: '0.peerjs.com',
-            port: 443,
-            path: '/',
-            secure: true,
-            debug: 2,                    // подробные логи
-            pingInterval: 5000,          // пинг каждые 5 сек, чтобы не отваливался
-            config: {
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' },
-                    { urls: 'stun:stun3.l.google.com:19302' }
-                ]
-            }
-        };
+        let triedWithSavedId = false;
 
-        if (savedId) {
-            peerOptions.id = savedId;
-            console.log('🔄 Используем сохранённый Peer ID:', savedId);
-        } else {
-            console.log('🆕 Генерируем новый Peer ID...');
+        function start(withSavedId) {
+            if (peer) {
+                try { peer.destroy(); } catch (e) {}
+                peer = null;
+            }
+
+            const idToUse = withSavedId ? savedId : null;
+            triedWithSavedId = withSavedId;
+
+            peer = createPeer(idToUse);
+
+            peer.on('open', (id) => {
+                currentPeerId = id;
+
+                console.log('%c✅ PeerJS подключён! Твой Peer ID:', 'color:#10b981; font-weight:700', id);
+
+                if (!savedId || savedId !== id) {
+                    savePeerIdToProfile(id);
+                }
+
+                localStorage.setItem('myPeerId', id);
+                window.peer = peer;
+                window.myPeerId = id;
+
+                resolve(id);
+            });
+
+            peer.on('error', (err) => {
+                console.error('❌ PeerJS error:', err.type, err.message);
+
+                // 🔥 КЛЮЧЕВОЙ FIX
+                if (err.type === 'unavailable-id' && triedWithSavedId) {
+                    console.warn('⚠️ ID занят, пробуем создать новый...');
+                    start(false); // fallback на новый ID
+                    return;
+                }
+
+                if (err.type === 'server-error' || err.type === 'network') {
+                    console.warn('⚠️ Проблемы с сетью. Пробуем reconnect...');
+                    attemptReconnect();
+                } else {
+                    reject(err);
+                }
+            });
+
+            peer.on('disconnected', () => {
+                console.warn('⚠️ PeerJS отключился. Переподключаемся...');
+                attemptReconnect();
+            });
+
+            peer.on('connection', (conn) => {
+                console.log('📥 Входящее соединение от', conn.peer);
+                setupConnection(conn);
+            });
         }
 
-        peer = new Peer(peerOptions);
-
-        peer.on('open', (id) => {
-            currentPeerId = id;
-            console.log('%c✅ PeerJS подключён! Твой Peer ID:', 'color:#10b981; font-weight:700', id);
-
-            if (!savedId || savedId !== id) {
-                savePeerIdToProfile(id);
-            }
-
-            localStorage.setItem('myPeerId', id);
-            window.peer = peer;
-            window.myPeerId = id;
-
-            resolve(id);
-        });
-
-        peer.on('error', (err) => {
-            console.error('❌ PeerJS error:', err.type, err.message);
-            if (err.type === 'unavailable-id') {
-                alert('Этот Peer ID уже занят. Зайди в профиль → нажми «Получить» для нового ID.');
-            } else if (err.type === 'server-error' || err.type === 'network') {
-                console.warn('⚠️ Проблемы с PeerJS Cloud. Пробуем переподключиться...');
-                attemptReconnect();
-            }
-        });
-
-        peer.on('disconnected', () => {
-            console.warn('⚠️ PeerJS отключился. Переподключаемся...');
-            attemptReconnect();
-        });
-
-        peer.on('connection', (conn) => {
-            console.log('📥 Входящее соединение от', conn.peer);
-            setupConnection(conn);
-        });
+        // стартуем
+        start(!!savedId);
     });
 }
 
+/**
+ * Реконнект
+ */
 function attemptReconnect() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
+
     reconnectTimer = setTimeout(() => {
         if (peer && !peer.destroyed) {
             console.log('🔄 Выполняем reconnect...');
@@ -97,20 +138,30 @@ function attemptReconnect() {
     }, 5000);
 }
 
+/**
+ * Сохранение Peer ID в профиль
+ */
 function savePeerIdToProfile(newId) {
     let profile = {};
     const saved = localStorage.getItem('profile');
+
     if (saved) profile = JSON.parse(saved);
+
     profile.peerId = newId;
+
     localStorage.setItem('profile', JSON.stringify(profile));
     window.currentProfile = profile;
 }
 
+/**
+ * Получить текущий Peer ID
+ */
 export function getMyPeerId() {
     return currentPeerId || localStorage.getItem('myPeerId') || getSavedPeerId();
 }
 
-// === Остальные функции оставляем без изменений ===
+// === Остальной код без изменений ===
+
 export async function ensureConnection(targetPeerId) {
     let conn = connections.get(targetPeerId);
     if (conn && conn.open) return conn;
@@ -165,6 +216,7 @@ function setupConnection(conn) {
             const myProfile = window.currentProfile || {};
             conn.send({ type: 'profileResponse', profile: myProfile });
         }
+
         if (data.type === 'message' && window.handleIncomingMessage) {
             window.handleIncomingMessage(peerId, data.message);
         }
@@ -175,11 +227,20 @@ function setupConnection(conn) {
 
 export function sendMessage(targetPeerId, text) {
     const conn = connections.get(targetPeerId);
+
     if (!conn || !conn.open) {
         console.warn('Нет соединения с', targetPeerId);
         return false;
     }
-    conn.send({ type: 'message', message: { text, timestamp: Date.now() } });
+
+    conn.send({
+        type: 'message',
+        message: {
+            text,
+            timestamp: Date.now()
+        }
+    });
+
     return true;
 }
 
