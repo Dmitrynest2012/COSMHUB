@@ -1,13 +1,11 @@
-// contacts.js — Реальный поиск по PeerJS
+// contacts.js — Реальный поиск по PeerJS + исправленные обработчики
 
 import { applyTranslations, getTranslation } from './i18n.js';
 import { connectToPeer, getMyPeerId } from './peer.js';
 
 let contacts = [];
 
-/**
- * Загрузка / сохранение контактов
- */
+// Загрузка/сохранение контактов
 function loadContacts() {
     const saved = localStorage.getItem('contacts');
     contacts = saved ? JSON.parse(saved) : [];
@@ -17,9 +15,7 @@ function saveContacts() {
     localStorage.setItem('contacts', JSON.stringify(contacts));
 }
 
-/**
- * Рендер контактов в сайдбаре
- */
+// Рендер контактов в сайдбаре
 function renderContacts() {
     const sidebarContent = document.getElementById('sidebar-content');
     
@@ -58,23 +54,43 @@ function renderContacts() {
     attachContactEvents();
 }
 
-function attachContactEvents() { /* остаётся как было раньше */ }
+function attachContactEvents() {
+    // Кнопка "Добавить контакт" в сайдбаре
+    const addBtn = document.getElementById('add-contact-btn');
+    if (addBtn) {
+        addBtn.addEventListener('click', openAddContactModal);
+    }
 
-/**
- * Открытие модального окна
- */
+    // Кнопки удаления
+    document.querySelectorAll('.remove-contact-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopImmediatePropagation(); // важно!
+            const index = parseInt(e.currentTarget.dataset.index);
+            if (!isNaN(index)) removeContact(index);
+        });
+    });
+}
+
+// Открытие модального окна
 function openAddContactModal() {
     const modal = document.getElementById('add-contact-modal');
+    if (!modal) return;
+
     document.getElementById('search-result').style.display = 'none';
     document.getElementById('peer-search-input').value = '';
+    
     modal.style.display = 'flex';
     applyTranslations();
 }
 
-/**
- * РЕАЛЬНЫЙ ПОИСК ПО PEER ID
- */
-async function searchPeer(peerId) {
+// Реальный поиск по Peer ID
+async function searchPeer(peerIdInput) {
+    const trimmedId = peerIdInput.trim();
+    if (!trimmedId) {
+        alert(getTranslation('enter-peer-id') || 'Введите Peer ID');
+        return;
+    }
+
     const resultContainer = document.getElementById('search-result');
     const resultAvatar = document.getElementById('result-avatar');
     const resultName = document.getElementById('result-name');
@@ -82,77 +98,90 @@ async function searchPeer(peerId) {
     const resultStatus = document.getElementById('result-status');
     const addBtn = document.getElementById('add-contact-confirm-btn');
 
-    try {
-        const conn = await connectToPeer(peerId.trim());
-        
-        // Запрашиваем профиль у удалённого пользователя
-        conn.send({ type: 'getProfile' });
+    resultContainer.style.display = 'none';
 
-        // Пока что показываем как "В сети" (в будущем можно получать реальный профиль)
+    try {
+        const conn = await connectToPeer(trimmedId);
+
+        // Показываем как онлайн
         resultAvatar.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
         resultName.textContent = 'Пользователь онлайн';
-        resultPeerIdEl.textContent = peerId;
+        resultPeerIdEl.textContent = trimmedId;
         resultStatus.textContent = getTranslation('status-online') || 'В сети';
         resultStatus.className = 'status-text status-online';
 
         resultContainer.style.display = 'block';
 
-        addBtn.onclick = () => {
-            // Добавляем контакт (можно потом улучшить — получать реальные данные профиля)
+        // Кнопка "Добавить"
+        addBtn.replaceWith(addBtn.cloneNode(true)); // сбрасываем старые обработчики
+        const newAddBtn = document.getElementById('add-contact-confirm-btn');
+
+        newAddBtn.addEventListener('click', () => {
             addContact({
-                peerId: peerId,
+                peerId: trimmedId,
                 name: 'Пользователь',
                 surname: '',
                 patronymic: '',
                 avatarUrl: ''
             });
             document.getElementById('add-contact-modal').style.display = 'none';
-        };
+        });
 
     } catch (err) {
-        resultContainer.style.display = 'none';
-        const msg = err.message === 'timeout' 
+        console.error('Search error:', err);
+        const msg = err.message.includes('timeout') || err.type === 'peer-unavailable'
             ? (getTranslation('peer-offline') || 'Пользователь не в сети или ID неверный')
             : (getTranslation('peer-not-found') || 'Не удалось найти пользователя');
         alert(msg);
     }
 }
 
-/**
- * Добавление контакта
- */
+// Добавление контакта
 function addContact(user) {
     if (contacts.some(c => c.peerId === user.peerId)) {
-        alert(getTranslation('contact-already-exists') || 'Контакт уже добавлен');
+        alert(getTranslation('contact-already-exists') || 'Этот контакт уже добавлен');
         return;
     }
+
     contacts.push(user);
     saveContacts();
     renderContacts();
 }
 
-function removeContact(index) { /* как было */ }
+function removeContact(index) {
+    if (confirm(getTranslation('delete-contact-confirm') || 'Удалить контакт?')) {
+        contacts.splice(index, 1);
+        saveContacts();
+        renderContacts();
+    }
+}
 
-/**
- * Инициализация
- */
+// Инициализация модуля
 export function initContacts() {
     loadContacts();
     renderContacts();
 
-    // Закрытие модального окна...
+    // Обработчики модального окна
     const modal = document.getElementById('add-contact-modal');
     const closeBtn = document.getElementById('add-contact-close');
     const searchBtn = document.getElementById('search-peer-btn');
     const searchInput = document.getElementById('peer-search-input');
 
-    closeBtn.addEventListener('click', () => modal.style.display = 'none');
-    modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    }
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.style.display = 'none';
+        });
+    }
 
-    searchBtn.addEventListener('click', () => searchPeer(searchInput.value));
-    searchInput.addEventListener('keypress', e => {
-        if (e.key === 'Enter') searchPeer(searchInput.value);
-    });
+    if (searchBtn && searchInput) {
+        searchBtn.addEventListener('click', () => searchPeer(searchInput.value));
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchPeer(searchInput.value);
+        });
+    }
 
-    console.log('%c✅ Реальный PeerJS модуль контактов инициализирован', 'color:#10b981; font-weight:700');
+    console.log('%c✅ Модуль контактов (реальный PeerJS) инициализирован', 'color:#10b981; font-weight:700');
 }
