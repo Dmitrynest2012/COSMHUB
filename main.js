@@ -91,3 +91,17 @@ startApp();
 
 
 
+document.addEventListener('keydown', (e) => {
+    // Проверяем комбинацию Shift + F8
+    if (e.shiftKey && e.key === 'F8') {
+        e.preventDefault(); // на всякий случай
+
+        // Очистка localStorage
+        localStorage.clear();
+
+        console.log('LocalStorage очищен 🚀');
+
+        // опционально — уведомление пользователю
+        alert('Локальное хранилище очищено');
+    }
+});
