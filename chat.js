@@ -1,12 +1,11 @@
-// chat.js — Управление окном чата
+// chat.js — Чат с авто-реконнектом и индикатором онлайн
 
-import { sendMessage } from './peer.js';
+import { sendMessage, ensureConnection } from './peer.js';
 import { applyTranslations, getTranslation } from './i18n.js';
 
 let currentChatPeerId = null;
 let messages = {};
 
-// ==================== ОСНОВНАЯ ФУНКЦИЯ ====================
 export function openChat(peerId, contact) {
     currentChatPeerId = peerId;
     highlightActiveContact(peerId);
@@ -24,6 +23,10 @@ export function openChat(peerId, contact) {
                         <div class="chat-peer-id">${peerId}</div>
                     </div>
                 </div>
+                <div class="chat-status">
+                    <span id="chat-status-dot" class="status-dot online"></span>
+                    <span id="chat-status-text" class="status-text">Онлайн</span>
+                </div>
                 <button id="close-chat-btn" class="chat-close-btn">✕</button>
             </div>
 
@@ -39,11 +42,38 @@ export function openChat(peerId, contact) {
     mainContent.innerHTML = html;
     applyTranslations();
 
+    // Авто-реконнект + загрузка истории
+    initChatConnection(peerId);
     renderMessages(peerId);
     setupChatListeners();
 }
 
-// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+async function initChatConnection(peerId) {
+    try {
+        await ensureConnection(peerId);           // ← авто-реконнект
+        updateChatStatus(true);
+    } catch (err) {
+        updateChatStatus(false);
+        console.warn('Не удалось подключиться к собеседнику');
+    }
+}
+
+function updateChatStatus(isOnline) {
+    const dot = document.getElementById('chat-status-dot');
+    const text = document.getElementById('chat-status-text');
+    if (!dot || !text) return;
+
+    if (isOnline) {
+        dot.className = 'status-dot online';
+        text.textContent = 'Онлайн';
+        text.style.color = '#4ade80';
+    } else {
+        dot.className = 'status-dot offline';
+        text.textContent = 'Офлайн';
+        text.style.color = '#f87171';
+    }
+}
+
 function highlightActiveContact(peerId) {
     document.querySelectorAll('.contact-card').forEach(card => {
         card.classList.toggle('active-contact', card.dataset.peerId === peerId);
@@ -53,10 +83,10 @@ function highlightActiveContact(peerId) {
 function renderMessages(peerId) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
+
     container.innerHTML = '';
 
     const msgList = messages[peerId] || [];
-
     msgList.forEach(msg => {
         const isMine = msg.from === window.myPeerId;
         const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -80,16 +110,9 @@ function renderMessages(peerId) {
 
 export function addMessage(peerId, text, isMine = true) {
     if (!messages[peerId]) messages[peerId] = [];
+    messages[peerId].push({ text, timestamp: Date.now(), from: isMine ? window.myPeerId : peerId });
 
-    messages[peerId].push({
-        text,
-        timestamp: Date.now(),
-        from: isMine ? window.myPeerId : peerId
-    });
-
-    if (currentChatPeerId === peerId) {
-        renderMessages(peerId);
-    }
+    if (currentChatPeerId === peerId) renderMessages(peerId);
 }
 
 window.handleIncomingMessage = (peerId, data) => {
@@ -108,6 +131,8 @@ function setupChatListeners() {
         if (sendMessage(currentChatPeerId, text)) {
             addMessage(currentChatPeerId, text, true);
             input.value = '';
+        } else {
+            alert('Не удалось отправить — соединение потеряно');
         }
     };
 
@@ -119,17 +144,19 @@ function setupChatListeners() {
         }
     });
 
-    closeBtn?.addEventListener('click', () => {
-        currentChatPeerId = null;
-        document.querySelectorAll('.contact-card').forEach(c => c.classList.remove('active-contact'));
-        
-        const main = document.getElementById('main-content');
-        main.innerHTML = `
-            <div class="welcome-block">
-                <h2 data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
-                <p class="placeholder-text">Выберите контакт для начала общения</p>
-            </div>
-        `;
-        applyTranslations();
-    });
+    closeBtn?.addEventListener('click', closeChat);
+}
+
+function closeChat() {
+    currentChatPeerId = null;
+    document.querySelectorAll('.contact-card').forEach(c => c.classList.remove('active-contact'));
+
+    const main = document.getElementById('main-content');
+    main.innerHTML = `
+        <div class="welcome-block">
+            <h2 data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
+            <p class="placeholder-text">Выберите контакт для начала общения</p>
+        </div>
+    `;
+    applyTranslations();
 }

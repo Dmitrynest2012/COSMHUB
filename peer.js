@@ -1,4 +1,4 @@
-// peer.js — PeerJS + обмен профилями и сообщениями
+// peer.js — PeerJS с авто-реконнектом
 
 let peer = null;
 let currentPeerId = null;
@@ -30,9 +30,7 @@ export function initPeer() {
             resolve(id);
         });
 
-        peer.on('error', (err) => {
-            console.error('PeerJS error:', err.type, err);
-        });
+        peer.on('error', (err) => console.error('PeerJS error:', err.type, err));
 
         peer.on('connection', (conn) => {
             console.log('📥 Входящее соединение от', conn.peer);
@@ -46,7 +44,30 @@ export function getMyPeerId() {
 }
 
 /**
- * Подключение + запрос профиля
+ * Гарантированно возвращает активное соединение (авто-реконнект)
+ */
+export async function ensureConnection(targetPeerId) {
+    let conn = connections.get(targetPeerId);
+
+    // Если соединение уже есть и открыто — возвращаем его
+    if (conn && conn.open) {
+        return conn;
+    }
+
+    console.log(`🔄 Реконнект к ${targetPeerId}...`);
+
+    try {
+        conn = await connectToPeer(targetPeerId);
+        connections.set(targetPeerId, conn);
+        return conn;
+    } catch (err) {
+        console.error('Не удалось восстановить соединение:', err);
+        throw err;
+    }
+}
+
+/**
+ * Внутреннее подключение (используется и вручную, и при реконнекте)
  */
 export function connectToPeer(targetPeerId) {
     return new Promise((resolve, reject) => {
@@ -59,19 +80,6 @@ export function connectToPeer(targetPeerId) {
             if (resolved) return;
             resolved = true;
             setupConnection(conn);
-
-            // Запрашиваем профиль
-            const myProfile = window.currentProfile || {};
-            conn.send({
-                type: 'getProfile',
-                profile: {
-                    name: myProfile.name || '',
-                    surname: myProfile.surname || '',
-                    patronymic: myProfile.patronymic || '',
-                    avatarUrl: myProfile.avatarUrl || ''
-                }
-            });
-
             resolve(conn);
         });
 
@@ -92,61 +100,31 @@ export function connectToPeer(targetPeerId) {
     });
 }
 
-/**
- * Настройка соединения (общие обработчики)
- */
 function setupConnection(conn) {
     const peerId = conn.peer;
     connections.set(peerId, conn);
 
     conn.on('data', (data) => {
-        console.log('📨 Получено от', peerId, data);
-
         if (data.type === 'getProfile') {
             const myProfile = window.currentProfile || {};
-            conn.send({
-                type: 'profileResponse',
-                profile: {
-                    name: myProfile.name || '',
-                    surname: myProfile.surname || '',
-                    patronymic: myProfile.patronymic || '',
-                    avatarUrl: myProfile.avatarUrl || ''
-                }
-            });
+            conn.send({ type: 'profileResponse', profile: myProfile });
         }
-
-        if (data.type === 'message') {
-            // Передаём сообщение в чат
-            if (window.handleIncomingMessage) {
-                window.handleIncomingMessage(peerId, data.message);
-            }
+        if (data.type === 'message' && window.handleIncomingMessage) {
+            window.handleIncomingMessage(peerId, data.message);
         }
     });
 
-    conn.on('close', () => {
-        console.log('Соединение закрыто с', peerId);
-        connections.delete(peerId);
-    });
+    conn.on('close', () => connections.delete(peerId));
 }
 
-/**
- * Отправка сообщения
- */
 export function sendMessage(targetPeerId, text) {
     const conn = connections.get(targetPeerId);
-    if (!conn || !conn.open) {
-        console.warn('Нет активного соединения с', targetPeerId);
-        return false;
-    }
+    if (!conn || !conn.open) return false;
 
     conn.send({
         type: 'message',
-        message: {
-            text: text,
-            timestamp: Date.now()
-        }
+        message: { text, timestamp: Date.now() }
     });
-
     return true;
 }
 
