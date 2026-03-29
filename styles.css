@@ -1,0 +1,738 @@
+/* styles.css */
+
+/* ====================== ИМПОРТ ШРИФТОВ ====================== */
+@import url('https://fonts.googleapis.com/css2?family=Play:wght@400;500;600&display=swap'); /* Шрифт Play (можно убрать, если без интернета) */
+
+
+/* ====================== CSS ПЕРЕМЕННЫЕ (ЦВЕТА И НАСТРОЙКИ) ====================== */
+/* Основные цвета и параметры для светлой темы */
+:root {
+    --bg-color: #f8f9ff;          /* Основной фон приложения */
+    --header-bg: #ffffff;         /* Фон хедера и сайдбара */
+    --text-color: #1f2937;        /* Основной цвет текста */
+    --accent: #6b7ae3;            /* Основной акцентный цвет (синий) */
+    --lavender: #a78bfa;          /* Лавандовый акцент */
+    --border-radius: 16px;        /* Радиус закругления углов по умолчанию */
+    --shadow: 0 10px 25px -5px rgb(107 122 227 / 0.15); /* Тень элементов */
+    --transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); /* Плавные переходы */
+}
+
+/* Темная тема — переопределяем переменные */
+.dark {
+    --bg-color: #171717;          /* Тёмный фон приложения */
+    --header-bg: #1f1f1f;         /* Тёмный фон хедера и сайдбара */
+    --text-color: #f1f1f1;        /* Светлый текст */
+    --accent: #8b9fff;            /* Более яркий акцент в тёмной теме */
+    --lavender: #c7b1ff;          /* Лавандовый в тёмной теме */
+    --shadow: 0 10px 25px -5px rgb(139 159 255 / 0.2); /* Тень для тёмной темы */
+}
+
+
+/* ====================== ГЛОБАЛЬНЫЕ СБРОСЫ ====================== */
+/* Сброс отступов и установка box-sizing для всех элементов */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+
+/* ====================== ОСНОВНОЙ КОНТЕЙНЕР (BODY) ====================== */
+/* Стили всего тела страницы */
+body {
+    font-family: 'Play', system-ui, -apple-system, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+
+/* ====================== ХЕДЕР ====================== */
+/* Основной хедер (верхняя панель) */
+.header {
+    height: 68px;
+    background: var(--header-bg);
+    border-bottom: 1px solid rgba(107, 122, 227, 0.15);
+    box-shadow: var(--shadow);
+    position: relative;
+    z-index: 100;
+    transition: var(--transition);
+}
+
+/* Контейнер внутри хедера для выравнивания контента */
+.header-container {
+    max-width: 100%;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+}
+
+/* Левая часть хедера (кнопка сайдбара + название) */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Название приложения */
+.app-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+}
+
+/* Кнопка сворачивания/разворачивания сайдбара */
+.toggle-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.toggle-btn:hover {
+    background: rgba(107, 122, 227, 0.1);
+}
+
+
+/* ====================== ПРАВАЯ ЧАСТЬ ХЕДЕРА ====================== */
+/* Блок пользователя в правой части хедера */
+.header-right .user-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    transition: var(--transition);
+}
+
+.header-right .user-block:hover {
+    background: rgba(107, 122, 227, 0.08);
+}
+
+/* Маленький аватар в хедере */
+.avatar-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--lavender));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px -2px rgb(107 122 227 / 0.3);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.avatar-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Имя пользователя в хедере */
+.username {
+    font-weight: 500;
+    font-size: 17px;
+    white-space: nowrap;
+}
+
+/* Стрелка вниз для открытия меню */
+.menu-arrow {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: var(--transition);
+}
+
+
+/* ====================== КОНТЕКСТНОЕ МЕНЮ ====================== */
+/* Выпадающее меню (язык + тема) */
+.context-menu {
+    position: absolute;
+    top: 74px;
+    right: 6px;
+    background: var(--header-bg);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    width: 280px;
+    display: none;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 200;
+    border: 1px solid rgba(107, 122, 227, 0.15);
+    animation: menuPop 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Анимация появления меню */
+@keyframes menuPop {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Элемент меню (строка) */
+.menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 15px;
+}
+
+/* Выпадающий список языков */
+.lang-select {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 15px;
+}
+
+
+/* ====================== ПЕРЕКЛЮЧАТЕЛЬ ТЕМЫ ====================== */
+/* Кастомный переключатель (switch) светлая/тёмная тема */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #ccc;
+    transition: .4s;
+    border-radius: 9999px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background: var(--accent);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+
+/* ====================== ОСНОВНАЯ РАЗМЕТКА ПРИЛОЖЕНИЯ ====================== */
+/* Основной контейнер (хедер + сайдбар + контент) */
+.app-container {
+    display: flex;
+    height: calc(100vh - 68px);
+    overflow: hidden;
+}
+
+/* Левый сайдбар */
+.sidebar {
+    width: 280px;
+    background: var(--header-bg);
+    border-right: 1px solid rgba(107, 122, 227, 0.15);
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow);
+}
+
+/* Сжатое состояние сайдбара */
+.sidebar.collapsed {
+    width: 72px;
+}
+
+.sidebar-content {
+    padding: 20px;
+    flex: 1;
+    transition: var(--transition);
+    opacity: 1;
+}
+
+.sidebar.collapsed .sidebar-content {
+    opacity: 0;
+    padding: 20px 8px;
+}
+
+.sidebar-placeholder {
+    font-size: 15px;
+    color: #888;
+    text-align: center;
+    padding-top: 40px;
+    font-style: italic;
+}
+
+/* Основная область контента */
+.main-content {
+    flex: 1;
+    background: var(--bg-color);
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.welcome-block {
+    text-align: center;
+    max-width: 420px;
+}
+
+.welcome-text {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    background: linear-gradient(90deg, var(--accent), var(--lavender));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.placeholder-text {
+    color: #888;
+    font-size: 17px;
+}
+
+
+/* ====================== МОДАЛЬНОЕ ОКНО ПРОФИЛЯ ====================== */
+/* Затемнённый фон модального окна */
+.modal {
+    position: fixed;
+    inset: 0;
+
+    /* полупрозрачный фон */
+    background: rgba(0, 0, 0, 0.35);
+
+    /* размытие заднего фона */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    transition: 
+        background 0.35s ease,
+        backdrop-filter 0.35s ease,
+        opacity 0.35s ease;
+
+    z-index: 1000;
+}
+
+/* Само окно профиля */
+.modal-content {
+    background: var(--header-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(107, 122, 227, 0.15);
+    width: 100%;
+    max-width: 620px;
+    border-radius: 24px;
+    padding: 32px;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    position: relative;
+    animation: modalPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Внутренняя структура модального окна */
+.profile-modal-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* Крестик для закрытия модального окна */
+.modal-close {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: none;
+    border: none;
+    font-size: 28px;
+    color: #888;
+    cursor: pointer;
+}
+
+/* Заголовок модального окна */
+.modal-title {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+/* Новая структура профиля: аватарка слева + форма справа */
+.profile-form {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+}
+
+/* Блок с большой аватаркой */
+.avatar-section {
+    flex-shrink: 0;
+}
+
+/* Большая аватарка (160×160) */
+.avatar-circle-large {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--lavender));
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.avatar-circle-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Блок с полями формы */
+.form-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Группа формы (label + input) */
+.form-group {
+    margin-bottom: 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--accent);
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e5e5e5;
+    border-radius: 14px;
+    font-size: 16px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    transition: var(--transition);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+/* Строка из двух полей (например, имя + фамилия) */
+.form-row {
+    display: flex;
+    gap: 16px;
+}
+
+/* ====================== ПОЛЕ ПИРИНГ-ИДЕНТИФИКАТОРА ====================== */
+.peer-id-group {
+    margin-top: 8px;
+}
+
+.peer-id-wrapper {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+#profile-peer-id {
+    flex: 1;
+    background: var(--bg-color);
+    border: 2px solid #e5e5e5;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-family: monospace;
+    font-size: 15px;
+    color: var(--text-color);
+}
+
+.generate-btn {
+    padding: 14px 20px;
+    background: linear-gradient(90deg, #6b7ae3, #a78bfa);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.generate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 15px -4px rgb(107 122 227);
+}
+
+/* Кнопка "Сохранить" — фиксированная ширина, под аватаркой */
+.save-btn {
+    position: fixed;
+    top: 290px;
+    width: 160px;
+    align-self: flex-start;
+    padding: 14px 24px;
+    background: linear-gradient(90deg, var(--accent), var(--lavender));
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+    transition: var(--transition);
+}
+
+.save-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 20px -6px rgb(107 122 227);
+}
+
+
+/* ====================== АНИМАЦИИ ====================== */
+/* Плавная анимация при смене темы */
+body.theme-changing {
+    animation: themePulse 0.6s ease;
+}
+
+@keyframes themePulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.92; }
+}
+
+
+
+
+/* ====================== МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ КОНТАКТА ====================== */
+.add-contact-modal {
+    max-width: 480px;
+}
+
+.search-section {
+    margin-bottom: 24px;
+}
+
+.search-input-wrapper {
+    display: flex;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+#peer-search-input {
+    flex: 1;
+    padding: 14px 16px;
+    border: 2px solid #e5e5e5;
+    border-radius: 14px;
+    font-size: 16px;
+    background: var(--bg-color);
+}
+
+.search-btn {
+    padding: 14px 24px;
+    background: linear-gradient(90deg, var(--accent), var(--lavender));
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.search-result {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--header-bg);
+    border-radius: 16px;
+    border: 1px solid rgba(107, 122, 227, 0.15);
+}
+
+.user-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.avatar-circle-medium {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--lavender));
+    flex-shrink: 0;
+}
+
+.user-info {
+    flex: 1;
+}
+
+.user-fullname {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.peer-id-text {
+    font-family: monospace;
+    font-size: 14px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.status-text {
+    font-size: 14px;
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+.add-contact-btn {
+    padding: 10px 20px;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Статусы */
+.status-online { color: #4ade80; }
+.status-offline { color: #f87171; }
+
+/* ====================== КНОПКА ДОБАВЛЕНИЯ КОНТАКТА В САЙДБАРЕ ====================== */
+.add-contact-main-btn {
+    width: 100%;
+    padding: 16px 20px;
+    background: linear-gradient(135deg, #4a4a5e, #2a2a38); /* тёмно-серый с синим оттенком */
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+.add-contact-main-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 20px -6px rgb(107 122 227 / 0.4);
+}
+
+.add-contact-main-btn:active {
+    transform: translateY(1px);
+}
+
+/* ====================== КАРТОЧКИ КОНТАКТОВ ====================== */
+.contacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.contact-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--header-bg);
+    border-radius: 16px;
+    border: 1px solid rgba(107, 122, 227, 0.12);
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.contact-card:hover {
+    background: rgba(107, 122, 227, 0.08);
+    transform: translateX(4px);
+}
+
+.contact-avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--accent), var(--lavender));
+    box-shadow: 0 4px 12px -2px rgb(107 122 227 / 0.3);
+}
+
+.contact-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.contact-name {
+    font-weight: 600;
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.contact-peer-id {
+    font-family: monospace;
+    font-size: 13px;
+    color: #888;
+    margin-top: 2px;
+}
+
+.remove-contact-btn {
+    background: none;
+    border: none;
+    color: #f87171;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: var(--transition);
+}
+
+.remove-contact-btn:hover {
+    background: rgba(248, 113, 113, 0.15);
+    color: #ef4444;
+}

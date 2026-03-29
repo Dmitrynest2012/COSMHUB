@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="app-title">Мессенджер</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Хедер (без изменений) -->
+    <header class="header">
+        <div class="header-container">
+            <div class="header-left">
+                <button id="sidebar-toggle" class="toggle-btn">☰</button>
+                <h1 data-i18n="app-title" class="app-title">Мессенджер</h1>
+            </div>
+            <div class="header-right">
+                <div id="user-block" class="user-block">
+                    <div id="header-avatar" class="avatar-circle"></div>
+                    <span id="header-username" class="username" data-i18n="default-username">Пользователь</span>
+                    <button id="menu-toggle" class="menu-arrow">▼</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="context-menu" class="context-menu">
+            <div class="menu-item">
+                <span data-i18n="language-label">Язык</span>
+                <select id="lang-select" class="lang-select">
+                    <option value="ru" data-i18n="lang-ru">Русский</option>
+                    <option value="en" data-i18n="lang-en">Английский</option>
+                    <option value="de" data-i18n="lang-de">Немецкий</option>
+                    <option value="fr" data-i18n="lang-fr">Французский</option>
+                </select>
+            </div>
+            <div class="menu-item theme-toggle-item">
+                <span data-i18n="theme-label">Тема</span>
+                <label class="switch">
+                    <input type="checkbox" id="theme-toggle">
+                    <span class="slider"></span>
+                </label>
+                <span id="theme-text">Светлая</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <aside id="sidebar" class="sidebar">
+            <div id="sidebar-content" class="sidebar-content">
+                <div data-i18n="sidebar-placeholder" class="sidebar-placeholder">Сайдбар (пустой)</div>
+            </div>
+        </aside>
+
+        <main id="main-content" class="main-content">
+            <div class="welcome-block">
+                <h2 id="welcome-text" data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
+                <p class="placeholder-text">Здесь будет чат. Функционал мессенджера пока не реализован.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Модальное окно профиля (обновлённая версия) -->
+<div id="profile-modal" class="modal">
+    <div class="modal-content profile-modal-layout">
+        <button id="modal-close" class="modal-close">✕</button>
+        <h2 data-i18n="profile-title" class="modal-title">Редактирование профиля</h2>
+
+        <div class="profile-form">
+            <!-- Большая аватарка слева -->
+            <div class="avatar-section">
+                <div id="preview-avatar" class="avatar-circle-large"></div>
+            </div>
+
+            <!-- Поля формы справа -->
+            <div class="form-section">
+                <div class="form-group">
+                    <label data-i18n="avatar-url-label">URL аватара</label>
+                    <input type="text" id="avatar-url-input" placeholder="https://example.com/avatar.jpg">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-i18n="surname-label">Фамилия</label>
+                        <input type="text" id="profile-surname">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="first-name-label">Имя</label>
+                        <input type="text" id="profile-name">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label data-i18n="patronymic-label">Отчество</label>
+                    <input type="text" id="profile-patronymic">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label data-i18n="gender-label">Пол</label>
+                        <select id="profile-gender">
+                            <option value="male" data-i18n="gender-male">Мужской</option>
+                            <option value="female" data-i18n="gender-female">Женский</option>
+                            <option value="other" data-i18n="gender-other">Другой</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="birth-date-label">Дата рождения</label>
+                        <input type="date" id="profile-birthdate">
+                    </div>
+                </div>
+
+                <!-- Новое поле: Пиринг-идентификатор -->
+<div class="form-group peer-id-group">
+    <label data-i18n="peer-id-label">Пиринг-идентификатор</label>
+    <div class="peer-id-wrapper">
+        <input 
+            type="text" 
+            id="profile-peer-id" 
+            readonly 
+            data-i18n-placeholder="peer-id-placeholder"
+            placeholder="Нажмите «Получить»">
+        <button 
+            id="generate-peer-id" 
+            class="generate-btn"
+            data-i18n="generate-button">
+            Получить
+        </button>
+    </div>
+</div>
+            </div>
+        </div>
+
+        <!-- Кнопка сохранить под аватаркой -->
+        <button id="save-profile-btn" data-i18n="save-button" class="save-btn">Сохранить</button>
+    </div>
+</div>
+
+<!-- Новое модальное окно: Добавить контакт -->
+    <div id="add-contact-modal" class="modal">
+        <div class="modal-content add-contact-modal">
+            <button id="add-contact-close" class="modal-close">✕</button>
+            <h2 data-i18n="add-contact-title">Добавить контакт</h2>
+
+            <div class="search-section">
+                <label data-i18n="peer-id-search-label">Поиск по пиринг-идентификатору</label>
+                <div class="search-input-wrapper">
+                    <input type="text" id="peer-search-input" 
+                           data-i18n-placeholder="peer-search-placeholder"
+                           placeholder="Введите Peer ID...">
+                    <button id="search-peer-btn" class="search-btn" data-i18n="search-button">Найти</button>
+                </div>
+            </div>
+
+            <!-- Результат поиска -->
+            <div id="search-result" class="search-result" style="display: none;">
+                <div class="user-card">
+                    <div id="result-avatar" class="avatar-circle-medium"></div>
+                    <div class="user-info">
+                        <div id="result-name" class="user-fullname"></div>
+                        <div id="result-peer-id" class="peer-id-text"></div>
+                        <div id="result-status" class="status-text"></div>
+                    </div>
+                    <button id="add-contact-confirm-btn" class="add-contact-btn">Добавить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>

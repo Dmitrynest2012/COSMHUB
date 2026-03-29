@@ -1,0 +1,204 @@
+{
+  "app-title": { 
+  "ru": "КОСМ Чат", 
+  "en": "KOSM Chat", 
+  "de": "KOSM Chat", 
+  "fr": "Messagerie KOSM" 
+ },
+  "default-username": {
+    "ru": "Пользователь",
+    "en": "User",
+    "de": "Benutzer",
+    "fr": "Utilisateur"
+  },
+  "profile-title": {
+    "ru": "Редактирование профиля",
+    "en": "Profile editing",
+    "de": "Profil bearbeiten",
+    "fr": "Modification du profil"
+  },
+  "avatar-url-label": {
+    "ru": "URL аватара",
+    "en": "Avatar URL",
+    "de": "Avatar-URL",
+    "fr": "URL de l'avatar"
+  },
+  "first-name-label": {
+    "ru": "Имя",
+    "en": "First name",
+    "de": "Vorname",
+    "fr": "Prénom"
+  },
+  "surname-label": {
+    "ru": "Фамилия",
+    "en": "Last name",
+    "de": "Nachname",
+    "fr": "Nom de famille"
+  },
+  "patronymic-label": {
+    "ru": "Отчество",
+    "en": "Patronymic",
+    "de": "Vatersname",
+    "fr": "Patronyme"
+  },
+  "gender-label": {
+    "ru": "Пол",
+    "en": "Gender",
+    "de": "Geschlecht",
+    "fr": "Genre"
+  },
+  "gender-male": {
+    "ru": "Мужской",
+    "en": "Male",
+    "de": "Männlich",
+    "fr": "Masculin"
+  },
+  "gender-female": {
+    "ru": "Женский",
+    "en": "Female",
+    "de": "Weiblich",
+    "fr": "Féminin"
+  },
+  "gender-other": {
+    "ru": "Другой",
+    "en": "Other",
+    "de": "Anderes",
+    "fr": "Autre"
+  },
+  "birth-date-label": {
+    "ru": "Дата рождения",
+    "en": "Date of birth",
+    "de": "Geburtsdatum",
+    "fr": "Date de naissance"
+  },
+  
+  "peer-id-label": {
+    "ru": "Пиринг-идентификатор",
+    "en": "Peer ID",
+    "de": "Peer-ID",
+    "fr": "Identifiant Peer"
+  },
+  "peer-id-placeholder": {
+    "ru": "Нажмите «Получить»",
+    "en": "Click «Generate»",
+    "de": "Klicken Sie auf «Generieren»",
+    "fr": "Cliquez sur « Générer »"
+  },
+  "generate-button": {
+    "ru": "Получить",
+    "en": "Generate",
+    "de": "Generieren",
+    "fr": "Générer"
+  },
+  "save-button": {
+    "ru": "Сохранить",
+    "en": "Save",
+    "de": "Speichern",
+    "fr": "Enregistrer"
+  },
+  "language-label": {
+    "ru": "Язык",
+    "en": "Language",
+    "de": "Sprache",
+    "fr": "Langue"
+  },
+  "theme-label": {
+    "ru": "Тема",
+    "en": "Theme",
+    "de": "Thema",
+    "fr": "Thème"
+  },
+  "dark-theme-option": {
+    "ru": "Тёмная",
+    "en": "Dark",
+    "de": "Dunkel",
+    "fr": "Sombre"
+  },
+  "light-theme-option": {
+    "ru": "Светлая",
+    "en": "Light",
+    "de": "Hell",
+    "fr": "Clair"
+  },
+  "lang-ru": {
+    "ru": "Русский",
+    "en": "Russian",
+    "de": "Russisch",
+    "fr": "Russe"
+  },
+  "lang-en": {
+    "ru": "Английский",
+    "en": "English",
+    "de": "Englisch",
+    "fr": "Anglais"
+  },
+  "lang-de": {
+    "ru": "Немецкий",
+    "en": "German",
+    "de": "Deutsch",
+    "fr": "Allemand"
+  },
+  "lang-fr": {
+    "ru": "Французский",
+    "en": "French",
+    "de": "Französisch",
+    "fr": "Français"
+  },
+  "sidebar-placeholder": {
+    "ru": "Сайдбар (пустой)",
+    "en": "Sidebar (empty)",
+    "de": "Seitenleiste (leer)",
+    "fr": "Barre latérale (vide)"
+  },
+  "welcome": {
+    "ru": "Добро пожаловать в мессенджер!",
+    "en": "Welcome to the messenger!",
+    "de": "Willkommen beim Messenger!",
+    "fr": "Bienvenue dans le messager !"
+  },
+  
+  "add-contact-title": {
+    "ru": "Добавить контакт",
+    "en": "Add contact",
+    "de": "Kontakt hinzufügen",
+    "fr": "Ajouter un contact"
+  },
+  "peer-id-search-label": {
+    "ru": "Поиск по пиринг-идентификатору",
+    "en": "Search by Peer ID",
+    "de": "Suche nach Peer-ID",
+    "fr": "Rechercher par Peer ID"
+  },
+  "peer-search-placeholder": {
+    "ru": "Введите Peer ID...",
+    "en": "Enter Peer ID...",
+    "de": "Peer-ID eingeben...",
+    "fr": "Entrez l'ID Peer..."
+  },
+  "add-contact-button": {
+    "ru": "Добавить контакт",
+    "en": "Add contact",
+    "de": "Kontakt hinzufügen",
+    "fr": "Ajouter un contact"
+  },
+  
+  "unknown-user": {
+    "ru": "Неизвестный пользователь",
+    "en": "Unknown user",
+    "de": "Unbekannter Benutzer",
+    "fr": "Utilisateur inconnu"
+  },
+  "delete": {
+    "ru": "Удалить",
+    "en": "Delete",
+    "de": "Löschen",
+    "fr": "Supprimer"
+  },
+  "search-button": {
+    "ru": "Найти",
+    "en": "Search",
+    "de": "Suchen",
+    "fr": "Rechercher"
+  }
+
+}
