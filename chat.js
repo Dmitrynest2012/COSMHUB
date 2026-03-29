@@ -4,21 +4,17 @@ import { sendMessage } from './peer.js';
 import { applyTranslations, getTranslation } from './i18n.js';
 
 let currentChatPeerId = null;
-let messages = {}; // peerId → массив сообщений
+let messages = {};
 
-/**
- * Открыть чат с пользователем
- */
+// ==================== ОСНОВНАЯ ФУНКЦИЯ ====================
 export function openChat(peerId, contact) {
     currentChatPeerId = peerId;
-
-    // Подсвечиваем активный контакт
     highlightActiveContact(peerId);
 
     const mainContent = document.getElementById('main-content');
     if (!mainContent) return;
 
-    let html = `
+    const html = `
         <div class="chat-window">
             <div class="chat-header">
                 <div class="chat-contact-info">
@@ -47,34 +43,25 @@ export function openChat(peerId, contact) {
     setupChatListeners();
 }
 
-/**
- * Подсветка активного контакта в сайдбаре
- */
+// ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
 function highlightActiveContact(peerId) {
     document.querySelectorAll('.contact-card').forEach(card => {
         card.classList.toggle('active-contact', card.dataset.peerId === peerId);
     });
 }
 
-/**
- * Рендер сообщений
- */
 function renderMessages(peerId) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
-
     container.innerHTML = '';
 
     const msgList = messages[peerId] || [];
 
     msgList.forEach(msg => {
         const isMine = msg.from === window.myPeerId;
-        const time = new Date(msg.timestamp).toLocaleTimeString([], { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        });
+        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-        const html = `
+        container.innerHTML += `
             <div class="message ${isMine ? 'message-mine' : 'message-their'}">
                 ${!isMine ? `<div class="message-avatar"></div>` : ''}
                 <div class="message-content">
@@ -86,20 +73,16 @@ function renderMessages(peerId) {
                 </div>
             </div>
         `;
-        container.innerHTML += html;
     });
 
     container.scrollTop = container.scrollHeight;
 }
 
-/**
- * Добавление сообщения (для своих и входящих)
- */
 export function addMessage(peerId, text, isMine = true) {
     if (!messages[peerId]) messages[peerId] = [];
 
     messages[peerId].push({
-        text: text,
+        text,
         timestamp: Date.now(),
         from: isMine ? window.myPeerId : peerId
     });
@@ -109,16 +92,10 @@ export function addMessage(peerId, text, isMine = true) {
     }
 }
 
-/**
- * Глобальная функция для приёма сообщений из peer.js
- */
 window.handleIncomingMessage = (peerId, data) => {
     addMessage(peerId, data.text, false);
 };
 
-/**
- * Настройка обработчиков чата
- */
 function setupChatListeners() {
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-message-btn');
@@ -128,43 +105,31 @@ function setupChatListeners() {
         const text = input.value.trim();
         if (!text || !currentChatPeerId) return;
 
-        const success = sendMessage(currentChatPeerId, text);
-        if (success) {
+        if (sendMessage(currentChatPeerId, text)) {
             addMessage(currentChatPeerId, text, true);
             input.value = '';
-        } else {
-            alert('Не удалось отправить сообщение. Соединение потеряно.');
         }
     };
 
     sendBtn?.addEventListener('click', send);
-    input?.addEventListener('keypress', (e) => {
+    input?.addEventListener('keypress', e => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             send();
         }
     });
 
-    closeBtn?.addEventListener('click', closeChat);
-}
-
-/**
- * Закрытие чата
- */
-function closeChat() {
-    currentChatPeerId = null;
-    document.querySelectorAll('.contact-card').forEach(card => {
-        card.classList.remove('active-contact');
-    });
-
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.innerHTML = `
+    closeBtn?.addEventListener('click', () => {
+        currentChatPeerId = null;
+        document.querySelectorAll('.contact-card').forEach(c => c.classList.remove('active-contact'));
+        
+        const main = document.getElementById('main-content');
+        main.innerHTML = `
             <div class="welcome-block">
                 <h2 data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
                 <p class="placeholder-text">Выберите контакт для начала общения</p>
             </div>
         `;
         applyTranslations();
-    }
+    });
 }
