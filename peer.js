@@ -1,4 +1,4 @@
-// peer.js — Реальное P2P соединение через PeerJS
+// peer.js — Реальное P2P соединение через PeerJS (улучшенная версия)
 
 let peer = null;
 let currentPeerId = null;
@@ -7,23 +7,28 @@ let currentPeerId = null;
  * Инициализация PeerJS
  */
 export function initPeer() {
-    return new Promise((resolve) => {
-        // Если уже создан — возвращаем сразу
+    return new Promise((resolve, reject) => {
         if (peer && !peer.destroyed) {
             resolve(currentPeerId);
             return;
         }
 
-        peer = new Peer(); // использует бесплатный PeerJS Cloud
+        // Создаём Peer с явными параметрами для стабильности
+        peer = new Peer({
+            debug: 2,                    // Уровень логирования (0-3), 2 — хороший баланс
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' }
+                ]
+            }
+        });
 
         peer.on('open', (id) => {
             currentPeerId = id;
             console.log('%c✅ PeerJS подключён. Твой Peer ID:', 'color:#10b981; font-weight:700', id);
             
-            // Сохраняем ID в localStorage (чтобы можно было восстановить)
             localStorage.setItem('myPeerId', id);
-            
-            // Делаем глобально доступным
             window.peer = peer;
             window.myPeerId = id;
             
@@ -31,17 +36,29 @@ export function initPeer() {
         });
 
         peer.on('error', (err) => {
-            console.error('PeerJS error:', err);
+            console.error('PeerJS global error:', err.type, err);
+            
             if (err.type === 'unavailable-id') {
                 alert('Этот Peer ID уже используется. Перезагрузи страницу.');
+            } else if (err.type === 'peer-unavailable') {
+                console.warn('Целевой peer недоступен');
+            } else if (err.type === 'disconnected') {
+                console.warn('PeerJS отключился от сервера');
             }
         });
 
-        // Принимаем входящие соединения (для будущего чата)
+        // Принимаем входящие соединения
         peer.on('connection', (conn) => {
-            console.log('Входящее соединение от', conn.peer);
+            console.log('📥 Входящее соединение от', conn.peer);
             handleIncomingConnection(conn);
         });
+
+        // Таймаут на инициализацию (мало ли)
+        setTimeout(() => {
+            if (!currentPeerId) {
+                reject(new Error('PeerJS initialization timeout'));
+            }
+        }, 10000);
     });
 }
 
@@ -53,7 +70,7 @@ export function getMyPeerId() {
 }
 
 /**
- * Подключение к другому пиру (поиск)
+ * Подключение к другому пиру (главная проблема была здесь)
  */
 export function connectToPeer(targetPeerId) {
     return new Promise((resolve, reject) => {
@@ -62,37 +79,58 @@ export function connectToPeer(targetPeerId) {
             return;
         }
 
-        const conn = peer.connect(targetPeerId, { reliable: true });
+        console.log(`🔗 Создаём соединение с ${targetPeerId}`);
+
+        const conn = peer.connect(targetPeerId, { 
+            reliable: true,
+            serialization: 'json'   // явно указываем, чтобы избежать проблем
+        });
+
+        let resolved = false;
 
         conn.on('open', () => {
-            console.log('Соединение установлено с', targetPeerId);
+            if (resolved) return;
+            resolved = true;
+            console.log('✅ DataConnection открыто с', targetPeerId);
             resolve(conn);
         });
 
         conn.on('error', (err) => {
-            console.error('Ошибка соединения:', err);
-            reject(err);
+            console.error('Соединение ошибка:', err);
+            if (!resolved) {
+                resolved = true;
+                reject(err);
+            }
         });
 
-        // Таймаут 8 секунд
+        // Увеличили таймаут до 15 секунд + более точная проверка
         setTimeout(() => {
-            if (conn.open === false) {
+            if (!resolved && (!conn.open || conn.open === false)) {
+                console.warn('Таймаут соединения, закрываем');
+                resolved = true;
                 conn.close();
                 reject(new Error('timeout'));
             }
-        }, 8000);
+        }, 15000);
     });
 }
 
 /**
- * Обработка входящего соединения (пока просто логируем)
+ * Обработка входящего соединения
  */
 function handleIncomingConnection(conn) {
+    conn.on('open', () => {
+        console.log('Соединение открыто (входящее) от', conn.peer);
+    });
+
     conn.on('data', (data) => {
-        console.log('Получены данные от', conn.peer, data);
-        // Здесь в будущем можно отвечать профилем и т.д.
+        console.log('📨 Получены данные от', conn.peer, data);
+        // Здесь позже будем обрабатывать запросы профиля
+    });
+
+    conn.on('close', () => {
+        console.log('Соединение закрыто с', conn.peer);
     });
 }
 
-// Экспортируем peer для других модулей
 export { peer };
