@@ -9,6 +9,7 @@ import { initSidebar } from './sidebar.js';
 import { initContacts } from './contacts.js';
 import { initProfile } from './profile.js';
 import { initPeer } from './peer.js';
+import { initChat } from './chat.js'; // если сделаешь init, или просто импортируй при необходимости
 
 
 /**

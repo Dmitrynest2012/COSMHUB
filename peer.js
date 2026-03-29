@@ -1,11 +1,9 @@
-// peer.js — Реальное P2P + обмен профилями
+// peer.js — PeerJS + обмен профилями и сообщениями
 
 let peer = null;
 let currentPeerId = null;
+let connections = new Map(); // peerId → DataConnection
 
-/**
- * Инициализация PeerJS
- */
 export function initPeer() {
     return new Promise((resolve, reject) => {
         if (peer && !peer.destroyed) {
@@ -33,15 +31,12 @@ export function initPeer() {
         });
 
         peer.on('error', (err) => {
-            console.error('PeerJS global error:', err.type, err);
-            if (err.type === 'unavailable-id') {
-                alert('Этот Peer ID уже используется. Перезагрузи страницу.');
-            }
+            console.error('PeerJS error:', err.type, err);
         });
 
         peer.on('connection', (conn) => {
             console.log('📥 Входящее соединение от', conn.peer);
-            handleIncomingConnection(conn);
+            setupConnection(conn);
         });
     });
 }
@@ -55,30 +50,25 @@ export function getMyPeerId() {
  */
 export function connectToPeer(targetPeerId) {
     return new Promise((resolve, reject) => {
-        if (!peer || peer.destroyed) {
-            reject(new Error('PeerJS не инициализирован'));
-            return;
-        }
+        if (!peer || peer.destroyed) return reject(new Error('PeerJS не инициализирован'));
 
         const conn = peer.connect(targetPeerId, { reliable: true, serialization: 'json' });
-
         let resolved = false;
 
         conn.on('open', () => {
             if (resolved) return;
             resolved = true;
+            setupConnection(conn);
 
-            // Сразу после открытия соединения запрашиваем профиль
+            // Запрашиваем профиль
             const myProfile = window.currentProfile || {};
             conn.send({
                 type: 'getProfile',
-                from: getMyPeerId(),
                 profile: {
                     name: myProfile.name || '',
                     surname: myProfile.surname || '',
                     patronymic: myProfile.patronymic || '',
-                    avatarUrl: myProfile.avatarUrl || '',
-                    peerId: getMyPeerId()
+                    avatarUrl: myProfile.avatarUrl || ''
                 }
             });
 
@@ -103,14 +93,16 @@ export function connectToPeer(targetPeerId) {
 }
 
 /**
- * Обработка входящих соединений и запросов профиля
+ * Настройка соединения (общие обработчики)
  */
-function handleIncomingConnection(conn) {
+function setupConnection(conn) {
+    const peerId = conn.peer;
+    connections.set(peerId, conn);
+
     conn.on('data', (data) => {
-        console.log('📨 Получены данные от', conn.peer, data);
+        console.log('📨 Получено от', peerId, data);
 
         if (data.type === 'getProfile') {
-            // Отправляем свой профиль в ответ
             const myProfile = window.currentProfile || {};
             conn.send({
                 type: 'profileResponse',
@@ -118,14 +110,44 @@ function handleIncomingConnection(conn) {
                     name: myProfile.name || '',
                     surname: myProfile.surname || '',
                     patronymic: myProfile.patronymic || '',
-                    avatarUrl: myProfile.avatarUrl || '',
-                    peerId: getMyPeerId()
+                    avatarUrl: myProfile.avatarUrl || ''
                 }
             });
         }
+
+        if (data.type === 'message') {
+            // Передаём сообщение в чат
+            if (window.handleIncomingMessage) {
+                window.handleIncomingMessage(peerId, data.message);
+            }
+        }
     });
 
-    conn.on('close', () => console.log('Соединение закрыто с', conn.peer));
+    conn.on('close', () => {
+        console.log('Соединение закрыто с', peerId);
+        connections.delete(peerId);
+    });
 }
 
-export { peer };
+/**
+ * Отправка сообщения
+ */
+export function sendMessage(targetPeerId, text) {
+    const conn = connections.get(targetPeerId);
+    if (!conn || !conn.open) {
+        console.warn('Нет активного соединения с', targetPeerId);
+        return false;
+    }
+
+    conn.send({
+        type: 'message',
+        message: {
+            text: text,
+            timestamp: Date.now()
+        }
+    });
+
+    return true;
+}
+
+export { peer, connections };

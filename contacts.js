@@ -1,4 +1,4 @@
-// contacts.js — Полная версия с реальным PeerJS поиском
+// contacts.js — Полная версия с реальным PeerJS + интеграция с чатом
 
 import { applyTranslations, getTranslation } from './i18n.js';
 import { connectToPeer, getMyPeerId } from './peer.js';
@@ -69,13 +69,39 @@ function attachContactEvents() {
         btn.removeEventListener('click', handleRemoveClick);
         btn.addEventListener('click', handleRemoveClick);
     });
+
+    // Клик по карточке контакта → открытие чата
+    document.querySelectorAll('.contact-card').forEach(card => {
+        card.removeEventListener('click', handleContactClick);
+        card.addEventListener('click', handleContactClick);
+    });
 }
 
 function handleRemoveClick(e) {
-    e.stopImmediatePropagation();
+    e.stopImmediatePropagation(); // чтобы не открывался чат при удалении
     const index = parseInt(e.currentTarget.dataset.index);
     if (!isNaN(index)) {
         removeContact(index);
+    }
+}
+
+function handleContactClick(e) {
+    // Если кликнули по кнопке удаления — игнорируем
+    if (e.target.classList.contains('remove-contact-btn')) return;
+
+    const peerId = e.currentTarget.dataset.peerId;
+    const contact = contacts.find(c => c.peerId === peerId);
+
+    if (contact) {
+        // Динамически импортируем chat.js и открываем чат
+        import('./chat.js')
+            .then(module => {
+                module.openChat(peerId, contact);
+            })
+            .catch(err => {
+                console.error('Ошибка загрузки модуля чата:', err);
+                alert('Не удалось открыть чат');
+            });
     }
 }
 
@@ -87,7 +113,6 @@ function openAddContactModal() {
         return;
     }
 
-    // Сбрасываем результаты предыдущего поиска
     const searchResult = document.getElementById('search-result');
     if (searchResult) searchResult.style.display = 'none';
 
@@ -116,7 +141,7 @@ async function searchPeer(peerIdStr) {
 
         console.log('✅ Соединение успешно установлено с:', trimmedId);
 
-        // Ждём ответ с профилем (до 5 секунд)
+        // Ждём ответ с профилем
         const profilePromise = new Promise((resolve) => {
             let timeout = setTimeout(() => resolve(null), 5000);
 
@@ -130,7 +155,7 @@ async function searchPeer(peerIdStr) {
 
         const remoteProfile = await profilePromise;
 
-        // Заполняем карточку
+        // Заполняем карточку результата поиска
         const resultAvatar = document.getElementById('result-avatar');
         const resultName = document.getElementById('result-name');
         const resultPeerIdEl = document.getElementById('result-peer-id');
@@ -160,10 +185,8 @@ async function searchPeer(peerIdStr) {
             resultName.textContent = fullName;
         }
 
-        // Peer ID
         if (resultPeerIdEl) resultPeerIdEl.textContent = trimmedId;
 
-        // Статус
         if (resultStatus) {
             resultStatus.textContent = getTranslation('status-online') || 'В сети';
             resultStatus.className = 'status-text status-online';
@@ -245,7 +268,6 @@ export function initContacts() {
         });
     }
 
-    // Диагностика
     console.log('%c✅ contacts.js инициализирован', 'color:#10b981; font-weight:700');
     console.log('Мой текущий Peer ID:', getMyPeerId());
 }
