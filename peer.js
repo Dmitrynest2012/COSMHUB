@@ -1,9 +1,10 @@
-// peer.js — Стабильная версия с fallback на новый ID
+// peer.js — стабильная версия с корректным использованием сохранённого Peer ID
 
 let peer = null;
 let currentPeerId = null;
 let connections = new Map();
 let reconnectTimer = null;
+let fallbackTimer = null;
 
 /**
  * Получаем сохранённый Peer ID из профиля
@@ -50,7 +51,7 @@ function createPeer(id = null) {
 }
 
 /**
- * Инициализация Peer с fallback
+ * Инициализация Peer с правильной логикой fallback
  */
 export function initPeer() {
     return new Promise((resolve, reject) => {
@@ -60,17 +61,16 @@ export function initPeer() {
         }
 
         const savedId = getSavedPeerId();
-
         let triedWithSavedId = false;
 
-        function start(withSavedId) {
+        function start(useSaved) {
             if (peer) {
                 try { peer.destroy(); } catch (e) {}
                 peer = null;
             }
 
-            const idToUse = withSavedId ? savedId : null;
-            triedWithSavedId = withSavedId;
+            triedWithSavedId = useSaved;
+            const idToUse = useSaved ? savedId : null;
 
             peer = createPeer(idToUse);
 
@@ -79,6 +79,7 @@ export function initPeer() {
 
                 console.log('%c✅ PeerJS подключён! Твой Peer ID:', 'color:#10b981; font-weight:700', id);
 
+                // сохраняем только если реально новый
                 if (!savedId || savedId !== id) {
                     savePeerIdToProfile(id);
                 }
@@ -87,21 +88,39 @@ export function initPeer() {
                 window.peer = peer;
                 window.myPeerId = id;
 
+                // если был таймер fallback — убиваем его
+                if (fallbackTimer) {
+                    clearTimeout(fallbackTimer);
+                    fallbackTimer = null;
+                }
+
                 resolve(id);
             });
 
             peer.on('error', (err) => {
                 console.error('❌ PeerJS error:', err.type, err.message);
 
-                // 🔥 КЛЮЧЕВОЙ FIX
+                // 🔥 КЛЮЧЕВАЯ ЛОГИКА
                 if (err.type === 'unavailable-id' && triedWithSavedId) {
-                    console.warn('⚠️ ID занят, пробуем создать новый...');
-                    start(false); // fallback на новый ID
+                    console.warn('⚠️ ID временно занят, пробуем восстановить...');
+
+                    // даём время на освобождение ID
+                    if (!fallbackTimer) {
+                        fallbackTimer = setTimeout(() => {
+                            console.warn('⛔ Старый ID не восстановился — создаём новый');
+                            start(false);
+                        }, 4000);
+                    }
+
+                    // пробуем реконнект
+                    try {
+                        peer.reconnect();
+                    } catch (e) {}
+
                     return;
                 }
 
-                if (err.type === 'server-error' || err.type === 'network') {
-                    console.warn('⚠️ Проблемы с сетью. Пробуем reconnect...');
+                if (err.type === 'network' || err.type === 'server-error') {
                     attemptReconnect();
                 } else {
                     reject(err);
@@ -109,8 +128,10 @@ export function initPeer() {
             });
 
             peer.on('disconnected', () => {
-                console.warn('⚠️ PeerJS отключился. Переподключаемся...');
-                attemptReconnect();
+                console.warn('⚠️ Peer отключён — пробуем вернуть соединение...');
+                try {
+                    peer.reconnect();
+                } catch (e) {}
             });
 
             peer.on('connection', (conn) => {
@@ -119,13 +140,13 @@ export function initPeer() {
             });
         }
 
-        // стартуем
+        // стартуем с сохранённым ID если есть
         start(!!savedId);
     });
 }
 
 /**
- * Реконнект
+ * Реконнект при сетевых проблемах
  */
 function attemptReconnect() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
@@ -145,7 +166,11 @@ function savePeerIdToProfile(newId) {
     let profile = {};
     const saved = localStorage.getItem('profile');
 
-    if (saved) profile = JSON.parse(saved);
+    if (saved) {
+        try {
+            profile = JSON.parse(saved);
+        } catch (e) {}
+    }
 
     profile.peerId = newId;
 
@@ -178,9 +203,15 @@ export async function ensureConnection(targetPeerId) {
 
 export function connectToPeer(targetPeerId) {
     return new Promise((resolve, reject) => {
-        if (!peer || peer.destroyed) return reject(new Error('PeerJS не инициализирован'));
+        if (!peer || peer.destroyed) {
+            return reject(new Error('PeerJS не инициализирован'));
+        }
 
-        const conn = peer.connect(targetPeerId, { reliable: true, serialization: 'json' });
+        const conn = peer.connect(targetPeerId, {
+            reliable: true,
+            serialization: 'json'
+        });
+
         let resolved = false;
 
         conn.on('open', () => {
