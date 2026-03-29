@@ -12,7 +12,7 @@ let messages = {}; // peerId → массив сообщений
 export function openChat(peerId, contact) {
     currentChatPeerId = peerId;
 
-    // Подсвечиваем активный контакт
+    // Подсвечиваем активный контакт в сайдбаре
     highlightActiveContact(peerId);
 
     const mainContent = document.getElementById('main-content');
@@ -46,23 +46,16 @@ export function openChat(peerId, contact) {
     mainContent.innerHTML = html;
     applyTranslations();
 
-    // Загружаем историю сообщений
     renderMessages(peerId);
-
-    // Обработчики
     setupChatListeners();
 }
 
 /**
- * Подсветка активного контакта в сайдбаре
+ * Подсветка активного контакта
  */
 function highlightActiveContact(peerId) {
     document.querySelectorAll('.contact-card').forEach(card => {
-        if (card.dataset.peerId === peerId) {
-            card.classList.add('active-contact');
-        } else {
-            card.classList.remove('active-contact');
-        }
+        card.classList.toggle('active-contact', card.dataset.peerId === peerId);
     });
 }
 
@@ -79,13 +72,14 @@ function renderMessages(peerId) {
 
     msgList.forEach(msg => {
         const isMine = msg.from === window.myPeerId;
-        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const time = new Date(msg.timestamp).toLocaleTimeString([], { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
 
-        const messageHTML = `
+        const html = `
             <div class="message ${isMine ? 'message-mine' : 'message-their'}">
-                ${!isMine ? `
-                <div class="message-avatar" style="background: linear-gradient(135deg, #6b7ae3, #a78bfa);"></div>
-                ` : ''}
+                ${!isMine ? `<div class="message-avatar"></div>` : ''}
                 <div class="message-content">
                     <div class="message-header">
                         <span class="message-sender">${isMine ? 'Вы' : 'Собеседник'}</span>
@@ -95,14 +89,14 @@ function renderMessages(peerId) {
                 </div>
             </div>
         `;
-        container.innerHTML += messageHTML;
+        container.innerHTML += html;
     });
 
     container.scrollTop = container.scrollHeight;
 }
 
 /**
- * Добавление нового сообщения
+ * Добавление нового сообщения (используется и для своих, и для входящих)
  */
 export function addMessage(peerId, text, isMine = true) {
     if (!messages[peerId]) messages[peerId] = [];
@@ -113,13 +107,14 @@ export function addMessage(peerId, text, isMine = true) {
         from: isMine ? window.myPeerId : peerId
     });
 
+    // Если чат сейчас открыт — сразу обновляем
     if (currentChatPeerId === peerId) {
         renderMessages(peerId);
     }
 }
 
 /**
- * Обработка входящих сообщений (глобальная функция)
+ * Глобальная функция для обработки входящих сообщений из peer.js
  */
 window.handleIncomingMessage = (peerId, data) => {
     addMessage(peerId, data.text, false);
@@ -142,18 +137,19 @@ function setupChatListeners() {
             addMessage(currentChatPeerId, text, true);
             input.value = '';
         } else {
-            alert('Не удалось отправить сообщение. Возможно, соединение потеряно.');
+            alert('Не удалось отправить сообщение. Соединение потеряно.');
         }
     };
 
-    sendBtn.addEventListener('click', send);
-
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            send();
-        }
-    });
+    if (sendBtn) sendBtn.addEventListener('click', send);
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+            }
+        });
+    }
 
     if (closeBtn) {
         closeBtn.addEventListener('click', closeChat);
@@ -171,14 +167,13 @@ function closeChat() {
 
     // Возвращаем приветственный экран
     const mainContent = document.getElementById('main-content');
-    mainContent.innerHTML = `
-        <div class="welcome-block">
-            <h2 data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
-            <p class="placeholder-text">Выберите контакт в сайдбаре для начала общения</p>
-        </div>
-    `;
-    applyTranslations();
+    if (mainContent) {
+        mainContent.innerHTML = `
+            <div class="welcome-block">
+                <h2 data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
+                <p class="placeholder-text">Выберите контакт для начала общения</p>
+            </div>
+        `;
+        applyTranslations();
+    }
 }
-
-// В самом конце chat.js добавь:
-export { openChat, addMessage };
