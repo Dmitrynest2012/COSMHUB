@@ -1,39 +1,31 @@
 // main.js — Основной файл приложения (точка входа)
 
-/**
- * Импорт всех модулей приложения
- */
+// main.js — Основной файл приложения
+
 import { initI18n, setLanguage, getCurrentLang } from './i18n.js';
 import { initTheme, updateThemeText } from './theme.js';
 import { initSidebar } from './sidebar.js';
-import { initContacts } from './contacts.js';
 import { initProfile } from './profile.js';
-import { initPeer } from './peer.js';
-import { initChat } from './chat.js'; // если сделаешь init, или просто импортируй при необходимости
+import { initContacts } from './contacts.js';
+import { initPeer } from './peer.js';        // ← важно
 
-
-/**
- * Главная асинхронная функция запуска всего приложения
- * Выполняется сразу при загрузке страницы
- */
 async function startApp() {
-    // ====================== ИНИЦИАЛИЗАЦИЯ МОДУЛЕЙ ======================
-    
-    // 1. Локализация (должна быть первой, т.к. другие модули могут использовать переводы)
+    // 1. Локализация
     await initI18n();
 
-    // 2. Тема интерфейса (светлая/тёмная)
-    initTheme();
-
-    // 3. Сайдбар (сворачивание/разворачивание)
-    initSidebar();
-
-    // 4. Модуль профиля пользователя
-    initProfile();
-
+    // 2. PeerJS (должен быть до всего, что использует соединения)
     await initPeer();
 
-    // 5. Модуль работы с контактами
+    // 3. Тема
+    initTheme();
+
+    // 4. Сайдбар
+    initSidebar();
+
+    // 5. Профиль
+    initProfile();
+
+    // 6. Контакты (внутри будет динамический импорт chat.js)
     initContacts();
 
     // ====================== РАБОТА С КОНТЕКСТНЫМ МЕНЮ ======================

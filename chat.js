@@ -179,3 +179,6 @@ function closeChat() {
     `;
     applyTranslations();
 }
+
+// В самом конце chat.js добавь:
+export { openChat, addMessage };
