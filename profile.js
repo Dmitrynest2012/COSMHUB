@@ -63,7 +63,7 @@ export function initProfile() {
             // Инициализируем PeerJS (если ещё не инициализирован)
             await initPeer();
 
-            const realPeerId = getMyPeerId();
+            const realPeerId = await generateNewPeerId();
             
             if (realPeerId) {
                 peerIdInput.value = realPeerId;
