@@ -1,7 +1,7 @@
-// profile.js — Редактирование профиля + интеграция с реальным PeerJS
+// profile.js — Редактирование профиля + интеграция с новой логикой PeerJS
 
 import { applyTranslations, getTranslation } from './i18n.js';
-import { initPeer, getMyPeerId } from './peer.js';
+import { initPeer, getMyPeerId, generateNewPeerId } from './peer.js';
 
 // Глобальная переменная для хранения данных профиля
 let currentProfile = {};
@@ -51,33 +51,37 @@ export function initProfile() {
         }
     });
 
-    // === ГЕНЕРАЦИЯ / ПОЛУЧЕНИЕ РЕАЛЬНОГО PEER ID ===
+    // === ГЕНЕРАЦИЯ PEER ID ТОЛЬКО ПО КНОПКЕ ===
     generateBtn.addEventListener('click', async () => {
         const peerIdInput = document.getElementById('profile-peer-id');
-        const statusText = generateBtn; // можно добавить индикатор загрузки позже
+        const originalText = generateBtn.textContent;
 
         try {
             generateBtn.disabled = true;
-            generateBtn.textContent = getTranslation('loading') || 'Подключение...';
+            generateBtn.textContent = getTranslation('loading') || 'Генерация...';
 
-            // Инициализируем PeerJS (если ещё не инициализирован)
-            await initPeer();
+            // Генерируем новый Peer ID в формате @login-xxxxxxxx
+            const newPeerId = await generateNewPeerId();
 
-            const realPeerId = await generateNewPeerId();
-            
-            if (realPeerId) {
-                peerIdInput.value = realPeerId;
-                currentProfile.peerId = realPeerId; // сразу сохраняем в текущий профиль
+            if (newPeerId) {
+                peerIdInput.value = newPeerId;
+                currentProfile.peerId = newPeerId; // сразу обновляем в текущем профиле
+                console.log('✅ Новый Peer ID успешно сгенерирован и сохранён:', newPeerId);
             } else {
-                throw new Error('Не удалось получить Peer ID');
+                throw new Error('Не удалось сгенерировать Peer ID');
             }
 
         } catch (err) {
-            console.error(err);
-            alert(getTranslation('peer-init-error') || 'Не удалось подключиться к PeerJS. Проверьте интернет.');
+            console.error('Ошибка генерации Peer ID:', err);
+            
+            if (err.message.includes('unavailable')) {
+                alert(getTranslation('peer-id-unavailable') || 'Этот ID временно занят. Попробуйте ещё раз.');
+            } else {
+                alert(getTranslation('peer-init-error') || 'Не удалось сгенерировать Peer ID. Проверьте интернет.');
+            }
         } finally {
             generateBtn.disabled = false;
-            generateBtn.textContent = getTranslation('generate-button') || 'Получить';
+            generateBtn.textContent = originalText || getTranslation('generate-button') || 'Получить @ID';
         }
     });
 
@@ -101,7 +105,7 @@ function openProfileModal() {
     document.getElementById('profile-gender').value = currentProfile.gender || 'male';
     document.getElementById('profile-birthdate').value = currentProfile.birthdate || '';
     
-    // Пиринг ID — показываем реальный, если есть
+    // Показываем текущий Peer ID (если есть)
     peerIdInput.value = currentProfile.peerId || getMyPeerId() || '';
 
     // URL аватара
