@@ -1,12 +1,15 @@
-// peer.js — стабильная версия с приоритетом сохранённого @ID + fallback
+// peer.js — Nice ID (@login-xxxxxxxx) + история до 10 real ID
 
 let peer = null;
-let currentPeerId = null;
+let currentRealPeerId = null;     // Текущий реальный ID от PeerJS
+let currentNicePeerId = null;     // Красивый постоянный ID
 let connections = new Map();
 let reconnectTimer = null;
 
+const MAX_REAL_IDS_HISTORY = 10;
+
 /**
- * Транслитерация русского текста в латинский (для логина)
+ * Транслитерация русского текста в латинский
  */
 function transliterate(text) {
     const translitMap = {
@@ -42,7 +45,7 @@ function generateSuffix() {
 }
 
 /**
- * Генерация красивого Peer ID: @login-suffix
+ * Генерация красивого Nice Peer ID
  */
 function generateNicePeerId(profile) {
     let login = '';
@@ -58,40 +61,58 @@ function generateNicePeerId(profile) {
     return `@${login}-${generateSuffix()}`;
 }
 
-/**
- * Получаем сохранённый Peer ID из профиля
- */
-function getSavedPeerId() {
+/* ====================== Работа с Nice ID ====================== */
+
+function getSavedNicePeerId() {
     const saved = localStorage.getItem('profile');
     if (saved) {
         try {
-            const profile = JSON.parse(saved);
-            return profile.peerId || null;
+            return JSON.parse(saved).nicePeerId || null;
         } catch (e) {}
     }
-    return localStorage.getItem('myPeerId') || null;
+    return null;
 }
 
-/**
- * Сохранение Peer ID в профиль
- */
-function savePeerIdToProfile(newId) {
+function saveNicePeerIdToProfile(niceId) {
     let profile = {};
     const saved = localStorage.getItem('profile');
     if (saved) {
         try { profile = JSON.parse(saved); } catch (e) {}
     }
 
-    profile.peerId = newId;
+    profile.nicePeerId = niceId;
     localStorage.setItem('profile', JSON.stringify(profile));
     window.currentProfile = profile;
-    currentPeerId = newId;
+    currentNicePeerId = niceId;
 }
 
-/**
- * Создание Peer
- */
-function createPeer(id = null) {
+/* ====================== История real ID (до 10 штук) ====================== */
+
+function getRealIdsHistory() {
+    const saved = localStorage.getItem('realPeerIdsHistory');
+    return saved ? JSON.parse(saved) : [];
+}
+
+function saveRealIdToHistory(realId) {
+    if (!realId) return;
+    let history = getRealIdsHistory();
+    
+    // Убираем дубликат
+    history = history.filter(id => id !== realId);
+    
+    // Добавляем новый в начало
+    history.unshift(realId);
+    
+    // Оставляем только последние 10
+    history = history.slice(0, MAX_REAL_IDS_HISTORY);
+    
+    localStorage.setItem('realPeerIdsHistory', JSON.stringify(history));
+    console.log(`📜 История real ID обновлена (${history.length} шт.)`);
+}
+
+/* ====================== PeerJS ====================== */
+
+function createPeer() {
     const peerOptions = {
         host: '0.peerjs.com',
         port: 443,
@@ -109,137 +130,226 @@ function createPeer(id = null) {
         }
     };
 
-    if (id) {
-        peerOptions.id = id;
-        console.log('🔄 Пытаемся использовать сохранённый Peer ID:', id);
-    } else {
-        console.log('🆕 Создаём Peer без фиксированного ID (PeerJS выдаст временный)');
-    }
-
     return new Peer(peerOptions);
 }
 
 /**
- * Инициализация PeerJS с приоритетом сохранённого ID + fallback
+ * Инициализация PeerJS
  */
 export function initPeer() {
     return new Promise((resolve, reject) => {
         if (peer && !peer.destroyed) {
-            resolve(currentPeerId || getSavedPeerId());
+            resolve(currentRealPeerId);
             return;
         }
 
-        const savedId = getSavedPeerId();
+        currentNicePeerId = getSavedNicePeerId();
 
         if (peer) {
             try { peer.destroy(); } catch (e) {}
             peer = null;
         }
 
-        let triedWithSaved = false;
+        peer = createPeer();   // Создаём без фиксированного ID — стабильнее
 
-        function start(useSavedId) {
-            triedWithSaved = useSavedId;
-            const idToUse = useSavedId ? savedId : null;
+        peer.on('open', (id) => {
+            currentRealPeerId = id;
+            saveRealIdToHistory(id);
 
-            peer = createPeer(idToUse);
+            console.log('%c✅ PeerJS успешно подключён', 'color:#10b981; font-weight:700');
+            console.log('   Nice ID (для друзей):', currentNicePeerId || 'не задан');
+            console.log('   Real ID (текущий):', id);
 
-            peer.on('open', (id) => {
-                currentPeerId = id;
-                console.log('%c✅ PeerJS подключён! Peer ID:', 'color:#10b981; font-weight:700', id);
+            window.peer = peer;
+            window.myRealPeerId = id;
+            window.myNicePeerId = currentNicePeerId;
 
-                // Сохраняем только если это действительно новый ID
-                if (!savedId || savedId !== id) {
-                    savePeerIdToProfile(id);
-                }
+            resolve(id);
+        });
 
-                localStorage.setItem('myPeerId', id);
-                window.peer = peer;
-                window.myPeerId = id;
+        peer.on('error', (err) => {
+            console.error('❌ PeerJS error:', err.type, err.message);
 
-                resolve(id);
-            });
+            if (err.type === 'network' || err.type === 'server-error') {
+                attemptReconnect();
+            } else {
+                reject(err);
+            }
+        });
 
-            peer.on('error', (err) => {
-                console.error('❌ PeerJS error:', err.type, err.message);
+        peer.on('disconnected', () => {
+            console.warn('⚠️ Peer отключён — пытаемся переподключиться...');
+            try { peer.reconnect(); } catch (e) {}
+        });
 
-                if (err.type === 'unavailable-id' && triedWithSaved && savedId) {
-                    console.warn('⚠️ Сохранённый ID временно занят — используем fallback (временный ID)');
-                    // Пробуем создать без указания ID
-                    start(false);
-                    return;
-                }
-
-                if (err.type === 'network' || err.type === 'server-error') {
-                    attemptReconnect();
-                } else {
-                    reject(err);
-                }
-            });
-
-            peer.on('disconnected', () => {
-                console.warn('⚠️ Peer отключён — пытаемся reconnect...');
-                try { peer.reconnect(); } catch (e) {}
-            });
-
-            peer.on('connection', (conn) => {
-                console.log('📥 Входящее соединение от', conn.peer);
-                setupConnection(conn);
-            });
-        }
-
-        // Начинаем с попытки использовать сохранённый ID
-        start(!!savedId);
+        peer.on('connection', (conn) => {
+            console.log('📥 Входящее соединение от', conn.peer);
+            setupConnection(conn);
+        });
     });
 }
 
 /**
- * Генерация нового красивого Peer ID (только по кнопке)
+ * Генерация нового красивого Nice ID (только по кнопке)
  */
-export async function generateNewPeerId() {
+export async function generateNewNicePeerId() {
     const profile = window.currentProfile || {};
-    let newPeerId = generateNicePeerId(profile);
+    const newNiceId = generateNicePeerId(profile);
 
-    console.log('🆕 Генерируем новый красивый Peer ID:', newPeerId);
+    console.log('🆕 Генерируем новый Nice Peer ID:', newNiceId);
+    saveNicePeerIdToProfile(newNiceId);
 
-    savePeerIdToProfile(newPeerId);   // сразу сохраняем
-
-    try {
-        await initPeer();             // теперь initPeer увидит новый сохранённый ID
-        return currentPeerId;
-    } catch (err) {
-        console.error('Ошибка при инициализации с новым ID:', err);
-        // Если даже новый ID не прошёл — пробуем ещё раз с другим суффиксом
-        newPeerId = generateNicePeerId(profile);
-        savePeerIdToProfile(newPeerId);
-        await initPeer();
-        return currentPeerId;
-    }
+    await initPeer();   // Запускаем PeerJS с новым nice ID в профиле
+    return newNiceId;
 }
 
 /**
- * Получить текущий Peer ID (для отображения)
+ * Получить Nice ID для отображения
  */
-export function getMyPeerId() {
-    return currentPeerId || getSavedPeerId() || null;
+export function getMyNicePeerId() {
+    return currentNicePeerId || getSavedNicePeerId() || null;
 }
 
 /**
- * Реконнект
+ * Получить историю real ID
+ */
+export function getRealPeerIdsHistory() {
+    return getRealIdsHistory();
+}
+
+/**
+ * Подключение по Nice ID (пробует все известные real ID)
+ */
+export async function connectByNiceId(niceId) {
+    if (!niceId || !niceId.startsWith('@')) {
+        throw new Error('Некорректный Nice ID');
+    }
+
+    const history = getRealIdsHistory();
+    if (history.length === 0) {
+        throw new Error('Нет сохранённых real ID для этого Nice ID');
+    }
+
+    console.log(`🔍 Пытаемся подключиться к ${niceId} через ${history.length} real ID...`);
+
+    for (const realId of history) {
+        try {
+            console.log(`   → Попытка через: ${realId}`);
+            const conn = await connectToPeer(realId);
+            console.log(`✅ Успешное подключение к ${niceId} через ${realId}`);
+            return conn;
+        } catch (err) {
+            console.warn(`   Не удалось через ${realId}: ${err.message}`);
+        }
+    }
+
+    throw new Error(`Не удалось подключиться к ${niceId}. Попросите собеседника обновить страницу.`);
+}
+
+/**
+ * Реконнект при сетевых проблемах
  */
 function attemptReconnect() {
     if (reconnectTimer) clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
-        if (peer && !peer.destroyed) peer.reconnect();
+        if (peer && !peer.destroyed) {
+            console.log('🔄 Выполняем reconnect...');
+            peer.reconnect();
+        }
     }, 5000);
 }
 
-// === Остальные функции без изменений ===
-export async function ensureConnection(targetPeerId) { /* ... */ }
-export function connectToPeer(targetPeerId) { /* ... */ }
+/* ====================== Базовые функции ====================== */
 
-function setupConnection(conn) { /* ... */ }
+function setupConnection(conn) {
+    const peerId = conn.peer;
+    connections.set(peerId, conn);
 
-export function sendMessage(targetPeerId, text) { /* ... */ }
+    conn.on('data', (data) => {
+        if (data.type === 'getProfile') {
+            const myProfile = window.currentProfile || {};
+            conn.send({ 
+                type: 'profileResponse', 
+                profile: myProfile,
+                niceId: getMyNicePeerId()
+            });
+        }
+
+        if (data.type === 'message' && window.handleIncomingMessage) {
+            window.handleIncomingMessage(peerId, data.message);
+        }
+    });
+
+    conn.on('close', () => connections.delete(peerId));
+}
+
+export function connectToPeer(targetPeerId) {
+    return new Promise((resolve, reject) => {
+        if (!peer || peer.destroyed) {
+            return reject(new Error('PeerJS не инициализирован'));
+        }
+
+        const conn = peer.connect(targetPeerId, {
+            reliable: true,
+            serialization: 'json'
+        });
+
+        let resolved = false;
+
+        conn.on('open', () => {
+            if (resolved) return;
+            resolved = true;
+            setupConnection(conn);
+            resolve(conn);
+        });
+
+        conn.on('error', (err) => {
+            if (!resolved) {
+                resolved = true;
+                reject(err);
+            }
+        });
+
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                conn.close();
+                reject(new Error('Таймаут подключения'));
+            }
+        }, 15000);
+    });
+}
+
+export async function ensureConnection(targetPeerId) {
+    let conn = connections.get(targetPeerId);
+    if (conn && conn.open) return conn;
+
+    try {
+        conn = await connectToPeer(targetPeerId);
+        connections.set(targetPeerId, conn);
+        return conn;
+    } catch (err) {
+        console.error('Не удалось подключиться к', targetPeerId, err);
+        throw err;
+    }
+}
+
+export function sendMessage(targetPeerId, text) {
+    const conn = connections.get(targetPeerId);
+    if (!conn || !conn.open) {
+        console.warn('Нет соединения с', targetPeerId);
+        return false;
+    }
+
+    conn.send({
+        type: 'message',
+        message: {
+            text,
+            timestamp: Date.now()
+        }
+    });
+
+    return true;
+}
 
 export { peer, connections };

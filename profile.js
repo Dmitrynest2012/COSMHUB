@@ -1,7 +1,7 @@
-// profile.js — Редактирование профиля + интеграция с новой логикой PeerJS
+// profile.js — Редактирование профиля + интеграция с Nice ID (@login-xxxxxxxx)
 
 import { applyTranslations, getTranslation } from './i18n.js';
-import { initPeer, getMyPeerId, generateNewPeerId } from './peer.js';
+import { initPeer, getMyNicePeerId, generateNewNicePeerId } from './peer.js';
 
 // Глобальная переменная для хранения данных профиля
 let currentProfile = {};
@@ -51,33 +51,33 @@ export function initProfile() {
         }
     });
 
-    // === ГЕНЕРАЦИЯ PEER ID ТОЛЬКО ПО КНОПКЕ (в формате @login-xxxxxxxx) ===
+    // === ГЕНЕРАЦИЯ КРАСИВОГО NICE PEER ID (@login-xxxxxxxx) ===
     generateBtn.addEventListener('click', async () => {
         const peerIdInput = document.getElementById('profile-peer-id');
-        const originalText = generateBtn.textContent || 'Получить @ID';
+        const originalText = generateBtn.textContent || 'Сгенерировать @ID';
 
         try {
             generateBtn.disabled = true;
             generateBtn.textContent = getTranslation('loading') || 'Генерация...';
 
-            // ←←← Главное изменение: используем generateNewPeerId()
-            const newPeerId = await generateNewPeerId();
+            // Генерируем новый красивый Nice ID
+            const newNiceId = await generateNewNicePeerId();
 
-            if (newPeerId) {
-                peerIdInput.value = newPeerId;
-                currentProfile.peerId = newPeerId;
-                console.log('✅ Новый Peer ID успешно установлен:', newPeerId);
+            if (newNiceId) {
+                peerIdInput.value = newNiceId;
+                currentProfile.nicePeerId = newNiceId;   // ← Важно: nicePeerId
+                console.log('✅ Новый Nice Peer ID успешно установлен:', newNiceId);
             } else {
-                throw new Error('Не удалось получить Peer ID');
+                throw new Error('Не удалось сгенерировать Nice ID');
             }
 
         } catch (err) {
-            console.error('Ошибка при генерации Peer ID:', err);
+            console.error('Ошибка при генерации Nice Peer ID:', err);
             
-            let errorMsg = getTranslation('peer-init-error') || 'Не удалось сгенерировать Peer ID.';
+            let errorMsg = getTranslation('peer-init-error') || 'Не удалось сгенерировать ID. Проверьте интернет.';
             
-            if (err.message.includes('unavailable') || err.message.includes('busy')) {
-                errorMsg = getTranslation('peer-id-unavailable') || 'Этот @ID временно занят. Нажмите кнопку ещё раз.';
+            if (err.message.includes('unavailable')) {
+                errorMsg = getTranslation('peer-id-unavailable') || 'Этот @ID временно занят. Попробуйте ещё раз.';
             }
             
             alert(errorMsg);
@@ -100,18 +100,20 @@ function openProfileModal() {
     const preview = document.getElementById('preview-avatar');
     const peerIdInput = document.getElementById('profile-peer-id');
 
-    // Заполняем поля
+    // Заполняем обычные поля
     document.getElementById('profile-name').value = currentProfile.name || '';
     document.getElementById('profile-surname').value = currentProfile.surname || '';
     document.getElementById('profile-patronymic').value = currentProfile.patronymic || '';
     document.getElementById('profile-gender').value = currentProfile.gender || 'male';
     document.getElementById('profile-birthdate').value = currentProfile.birthdate || '';
     
-    // Peer ID
-    peerIdInput.value = currentProfile.peerId || getMyPeerId() || '';
+    // Показываем красивый Nice Peer ID
+    peerIdInput.value = currentProfile.nicePeerId || getMyNicePeerId() || '';
 
-    // Аватар
+    // URL аватара
     urlInput.value = currentProfile.avatarUrl || '';
+
+    // Превью аватарки
     const previewEl = document.getElementById('preview-avatar');
     if (currentProfile.avatarUrl) {
         previewEl.style.backgroundImage = `url(${currentProfile.avatarUrl})`;
@@ -137,7 +139,7 @@ function saveProfile() {
         gender: document.getElementById('profile-gender').value,
         birthdate: document.getElementById('profile-birthdate').value,
         avatarUrl: document.getElementById('avatar-url-input').value.trim(),
-        peerId: document.getElementById('profile-peer-id').value.trim()
+        nicePeerId: document.getElementById('profile-peer-id').value.trim()   // ← nicePeerId
     };
 
     localStorage.setItem('profile', JSON.stringify(currentProfile));
