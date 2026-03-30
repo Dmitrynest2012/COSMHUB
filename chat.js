@@ -1,4 +1,4 @@
-// chat.js — Чат с индикатором «Печатает» + полная поддержка data-i18n
+// chat.js — Чат с индикатором "Печатает" + кнопкой "Поделиться моим Real ID"
 
 import { sendMessage, ensureConnection, sendTypingStatus, connections } from './peer.js';
 import { applyTranslations, getTranslation } from './i18n.js';
@@ -7,9 +7,9 @@ let currentChatPeerId = null;
 let currentContact = null;
 let messages = {};
 
-// Таймер для отправки «перестал печатать»
+// Таймер для статуса печати
 let typingTimer = null;
-const TYPING_TIMEOUT = 1500; // 1.5 секунды
+const TYPING_TIMEOUT = 1500;
 
 // ====================== Открытие чата ======================
 export function openChat(realPeerId, contact) {
@@ -39,11 +39,17 @@ export function openChat(realPeerId, contact) {
                         </div>
                     </div>
                 </div>
-                <div class="chat-status">
-                    <span id="chat-status-dot" class="status-dot offline"></span>
-                    <span id="chat-status-text" class="status-text" data-i18n="status-offline">Офлайн</span>
+
+                <div class="chat-header-actions">
+                    <button id="share-my-id-btn" class="share-id-btn" title="Поделиться моим Real ID">
+                        📤
+                    </button>
+                    <div class="chat-status">
+                        <span id="chat-status-dot" class="status-dot offline"></span>
+                        <span id="chat-status-text" class="status-text" data-i18n="status-offline">Офлайн</span>
+                    </div>
+                    <button id="close-chat-btn" class="chat-close-btn">✕</button>
                 </div>
-                <button id="close-chat-btn" class="chat-close-btn">✕</button>
             </div>
 
             <div id="chat-messages" class="chat-messages"></div>
@@ -65,7 +71,7 @@ export function openChat(realPeerId, contact) {
     `;
 
     mainContent.innerHTML = html;
-    applyTranslations();           // применяем переводы ко всем data-i18n
+    applyTranslations();
 
     initChatConnection(realPeerId);
     renderMessages(realPeerId);
@@ -99,18 +105,18 @@ function updateChatStatus(isOnline) {
     }
 }
 
-// ====================== Обработка отправки сообщений + печати ======================
+// ====================== Слушатели событий ======================
 function setupChatListeners() {
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-message-btn');
     const closeBtn = document.getElementById('close-chat-btn');
+    const shareBtn = document.getElementById('share-my-id-btn');
 
-    // Отправка обычного сообщения
+    // Отправка сообщения
     const send = async () => {
         const text = input.value.trim();
         if (!text || !currentChatPeerId) return;
 
-        // Команда обновления Real ID
         if (text.startsWith('> ')) {
             const newRealId = text.substring(2).trim();
             if (newRealId.length < 10) {
@@ -125,7 +131,6 @@ function setupChatListeners() {
         if (sendMessage(currentChatPeerId, text)) {
             addMessage(currentChatPeerId, text, true);
             input.value = '';
-            // после отправки сразу убираем индикатор печати у себя
             stopTyping();
         } else {
             alert('Не удалось отправить сообщение — соединение потеряно.');
@@ -140,28 +145,62 @@ function setupChatListeners() {
         }
     });
 
-    // === Обработка печати (typing) ===
+    // Печать (typing)
     input.addEventListener('input', () => {
-        if (!currentChatPeerId) return;
-        startTyping();
+        if (currentChatPeerId) startTyping();
     });
+    input.addEventListener('blur', stopTyping);
 
-    input.addEventListener('blur', () => {
-        stopTyping();
-    });
+    // Кнопка "Поделиться моим Real ID"
+    if (shareBtn) {
+        shareBtn.addEventListener('click', shareMyRealId);
+    }
 
     closeBtn.addEventListener('click', closeChat);
 }
 
-// ====================== Индикатор «Печатает» ======================
+// ====================== Кнопка "Поделиться моим Real ID" ======================
+async function shareMyRealId() {
+    const myId = window.myRealPeerId;
+    if (!myId) {
+        alert('Ваш Real Peer ID ещё не получен. Подождите подключения.');
+        return;
+    }
+
+    const textToCopy = `> ${myId}`;
+
+    try {
+        await navigator.clipboard.writeText(textToCopy);
+
+        const btn = document.getElementById('share-my-id-btn');
+        const originalText = btn.textContent;
+        
+        btn.textContent = '✓';
+        btn.style.backgroundColor = '#4ade80';
+
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.backgroundColor = '';
+        }, 1800);
+
+        alert(`Скопировано в буфер обмена:\n\n${textToCopy}\n\n` +
+              `Отправьте это сообщение другу — он сможет быстро обновить ваш Real ID у себя.`);
+
+        console.log('✅ Поделился своим Real ID:', textToCopy);
+
+    } catch (err) {
+        console.error('Ошибка копирования:', err);
+        alert(`Не удалось скопировать.\n\nСкопируйте вручную:\n> ${myId}`);
+    }
+}
+
+// ====================== Статус "Печатает" ======================
 function startTyping() {
     if (typingTimer) clearTimeout(typingTimer);
     
-    sendTypingStatus(currentChatPeerId, true);   // отправляем собеседнику
+    sendTypingStatus(currentChatPeerId, true);
 
-    typingTimer = setTimeout(() => {
-        stopTyping();
-    }, TYPING_TIMEOUT);
+    typingTimer = setTimeout(() => stopTyping(), TYPING_TIMEOUT);
 }
 
 function stopTyping() {
@@ -172,31 +211,22 @@ function stopTyping() {
     sendTypingStatus(currentChatPeerId, false);
 }
 
-// Показать / скрыть индикатор
 function showTypingIndicator(show) {
     const indicator = document.getElementById('typing-indicator');
     if (!indicator) return;
     indicator.style.display = show ? 'flex' : 'none';
 }
 
-// ====================== Обновление Real ID ======================
-/**
- * Обновление real Peer ID друга (улучшенная версия)
- */
+// ====================== Обновление Real ID друга ======================
 async function updateFriendRealId(newRealId) {
-    if (!currentContact || !newRealId || newRealId.length < 10) {
-        alert('Некорректный Peer ID');
-        return;
-    }
+    if (!currentContact) return;
 
     const oldRealId = currentChatPeerId;
     console.log(`🔄 Обновляем real Peer ID друга: ${oldRealId} → ${newRealId}`);
 
-    // 1. Обновляем данные текущего чата
     currentContact.realPeerId = newRealId;
     currentChatPeerId = newRealId;
 
-    // 2. Обновляем отображение в шапке
     const displayEl = document.getElementById('chat-peer-id-display');
     if (displayEl) {
         displayEl.innerHTML = `
@@ -205,38 +235,32 @@ async function updateFriendRealId(newRealId) {
         `;
     }
 
-    // 3. Сохраняем в localStorage
     updateContactInStorage(currentContact);
 
-    // 4. Закрываем старое соединение (важно!)
-    const oldConn = connections.get(oldRealId);  // connections из peer.js (нужно импортировать)
-    if (oldConn) {
-        oldConn.close();
+    // Закрываем старое соединение
+    if (connections && connections.has(oldRealId)) {
+        const oldConn = connections.get(oldRealId);
+        if (oldConn) oldConn.close();
         connections.delete(oldRealId);
     }
 
-    // 5. Пытаемся подключиться к новому ID
     try {
         await ensureConnection(newRealId);
         updateChatStatus(true);
-        alert(`✅ Real ID друга обновлён на ${newRealId.slice(0,8)}...\n\nТеперь попросите друга тоже обновить ваш Real ID у себя (если он ещё использует старый).`);
-        
-        // Дополнительно: можно автоматически отправить своё текущее Real ID другу
-        setTimeout(() => {
-            if (sendMessage(newRealId, `> ${window.myRealPeerId}`)) {
-                console.log('Отправлено своё новое ID другу автоматически');
-            }
-        }, 800);
+
+        alert(`✅ Real ID друга обновлён!\n\n` +
+              `Теперь попросите друга обновить ваш Real ID.\n` +
+              `Он может просто вставить в чат:\n> ${window.myRealPeerId}`);
 
     } catch (err) {
-        console.error('Ошибка подключения к новому ID:', err);
         updateChatStatus(false);
-        alert(`Real ID обновлён, но подключиться не удалось.\n\nУбедитесь, что друг онлайн и тоже обновил ваш Real ID у себя.`);
+        alert(`Real ID обновлён, но подключение не установлено.\n\nУбедитесь, что друг онлайн и тоже обновил ваш ID.`);
     }
 }
 
 function updateContactInStorage(updatedContact) {
     let contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
+    
     const index = contacts.findIndex(c => 
         (c.realPeerId === updatedContact.realPeerId) || 
         (c.nicePeerId && c.nicePeerId === updatedContact.nicePeerId)
@@ -297,10 +321,9 @@ export function addMessage(peerId, text, isMine = true) {
     }
 }
 
-// ====================== Входящие данные от peer.js ======================
 window.handleIncomingMessage = (peerId, data) => {
     if (data.type === 'message') {
-        addMessage(peerId, data.message.text, false);
+        addMessage(peerId, data.message.text || data.text, false);
     } else if (data.type === 'typing') {
         showTypingIndicator(data.isTyping);
     }
