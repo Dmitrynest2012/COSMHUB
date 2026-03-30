@@ -85,10 +85,10 @@
     "fr": "Cliquez sur « Générer »"
   },
   "generate-button": {
-    "ru": "Получить",
-    "en": "Generate",
-    "de": "Generieren",
-    "fr": "Générer"
+  "ru": "Копировать",
+  "en": "Copy",
+  "de": "Kopieren",
+  "fr": "Copier"
   },
   "save-button": {
     "ru": "Сохранить",
@@ -211,6 +211,62 @@
     "en": "Failed to connect to PeerJS. Check your internet.",
     "de": "Verbindung zu PeerJS fehlgeschlagen. Überprüfen Sie Ihre Internetverbindung.",
     "fr": "Échec de la connexion à PeerJS. Vérifiez votre connexion internet."
+  },
+  
+  "typing": {
+    "ru": "Печатает",
+    "en": "Typing",
+    "de": "Schreibt",
+    "fr": "Écrit"
+  },
+  "send-button": {
+    "ru": "Отправить",
+    "en": "Send",
+    "de": "Senden",
+    "fr": "Envoyer"
+  },
+  "you": {
+    "ru": "Вы",
+    "en": "You",
+    "de": "Sie",
+    "fr": "Vous"
+  },
+  "interlocutor": {
+    "ru": "Собеседник",
+    "en": "Interlocutor",
+    "de": "Gesprächspartner",
+    "fr": "Interlocuteur"
+  },
+  "status-online": {
+    "ru": "В сети",
+    "en": "Online",
+    "de": "Online",
+    "fr": "En ligne"
+  },
+  "status-offline": {
+    "ru": "Не в сети",
+    "en": "Offline",
+    "de": "Offline",
+    "fr": "Hors ligne"
+  },
+  "chat-placeholder": {
+    "ru": "Напишите сообщение...\nИли введите > новый_real_id для обновления",
+    "en": "Type a message...\nOr enter > new_real_id to update",
+    "de": "Schreiben Sie eine Nachricht...\nOder geben Sie > new_real_id ein, um zu aktualisieren",
+    "fr": "Écrivez un message...\nOu entrez > new_real_id pour mettre à jour"
+  },
+  "copy-real-id": {
+    "ru": "Копировать ID",
+    "en": "Copy ID",
+    "de": "ID kopieren",
+    "fr": "Copier l'ID"
+  },
+  "copy-real-id-success": {
+    "ru": "✓ Скопировано!",
+    "en": "✓ Copied!",
+    "de": "✓ Kopiert!",
+    "fr": "✓ Copié !"
   }
+
 
 }

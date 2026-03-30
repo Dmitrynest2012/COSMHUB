@@ -1,4 +1,4 @@
-// peer.js — Nice ID (@login-xxxxxxxx) + история до 10 real ID
+// peer.js — Nice ID (@login-xxxxxxxx) + история до 10 real ID + поддержка статуса «Печатает»
 
 let peer = null;
 let currentRealPeerId = null;     // Текущий реальный ID от PeerJS
@@ -17,6 +17,11 @@ function transliterate(text) {
         'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
         'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
         'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+        'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
+        'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
+        'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R', 'С': 'S', 'Т': 'T', 'У': 'U',
+        'Ф': 'F', 'Х': 'H', 'Ц': 'C', 'Ч': 'Ch', 'Ш': 'Sh', 'Щ': 'Sch',
         'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
         'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'Yo',
         'Ж': 'Zh', 'З': 'Z', 'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M',
@@ -150,7 +155,7 @@ export function initPeer() {
             peer = null;
         }
 
-        peer = createPeer();   // Создаём без фиксированного ID — стабильнее
+        peer = createPeer();
 
         peer.on('open', (id) => {
             currentRealPeerId = id;
@@ -199,7 +204,7 @@ export async function generateNewNicePeerId() {
     console.log('🆕 Генерируем новый Nice Peer ID:', newNiceId);
     saveNicePeerIdToProfile(newNiceId);
 
-    await initPeer();   // Запускаем PeerJS с новым nice ID в профиле
+    await initPeer();
     return newNiceId;
 }
 
@@ -275,8 +280,14 @@ function setupConnection(conn) {
             });
         }
 
+        // Обычное сообщение
         if (data.type === 'message' && window.handleIncomingMessage) {
             window.handleIncomingMessage(peerId, data.message);
+        }
+
+        // === НОВОЕ: Статус "Печатает" ===
+        if (data.type === 'typing' && window.handleIncomingMessage) {
+            window.handleIncomingMessage(peerId, data);
         }
     });
 
@@ -350,6 +361,19 @@ export function sendMessage(targetPeerId, text) {
     });
 
     return true;
+}
+
+/**
+ * Отправка статуса "Печатает" собеседнику
+ */
+export function sendTypingStatus(targetPeerId, isTyping) {
+    const conn = connections.get(targetPeerId);
+    if (!conn || !conn.open) return;
+
+    conn.send({
+        type: 'typing',
+        isTyping: isTyping
+    });
 }
 
 export { peer, connections };

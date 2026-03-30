@@ -1,9 +1,10 @@
-// profile.js — Редактирование профиля + интеграция с Nice ID (@login-xxxxxxxx)
+// profile.js — Редактирование профиля + копирование Real Peer ID
 
 import { applyTranslations, getTranslation } from './i18n.js';
-import { initPeer, getMyNicePeerId, generateNewNicePeerId } from './peer.js';
 
-// Глобальная переменная для хранения данных профиля
+/**
+ * Глобальная переменная для хранения данных профиля
+ */
 let currentProfile = {};
 
 /**
@@ -15,7 +16,6 @@ export function initProfile() {
     const modal = document.getElementById('profile-modal');
     const closeBtn = document.getElementById('modal-close');
     const saveBtn = document.getElementById('save-profile-btn');
-    const generateBtn = document.getElementById('generate-peer-id');
 
     // Загрузка сохранённого профиля
     const saved = localStorage.getItem('profile');
@@ -32,15 +32,15 @@ export function initProfile() {
 
     // Закрытие окна
     closeBtn.addEventListener('click', () => modal.style.display = 'none');
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', e => {
         if (e.target === modal) modal.style.display = 'none';
     });
 
     // Предпросмотр аватара
     const urlInput = document.getElementById('avatar-url-input');
-    const preview = document.getElementById('preview-avatar');
     urlInput.addEventListener('input', () => {
         const url = urlInput.value.trim();
+        const preview = document.getElementById('preview-avatar');
         if (url) {
             preview.style.backgroundImage = `url(${url})`;
             preview.style.backgroundSize = 'cover';
@@ -51,66 +51,29 @@ export function initProfile() {
         }
     });
 
-    // === ГЕНЕРАЦИЯ КРАСИВОГО NICE PEER ID (@login-xxxxxxxx) ===
-    generateBtn.addEventListener('click', async () => {
-        const peerIdInput = document.getElementById('profile-peer-id');
-        const originalText = generateBtn.textContent || 'Сгенерировать @ID';
-
-        try {
-            generateBtn.disabled = true;
-            generateBtn.textContent = getTranslation('loading') || 'Генерация...';
-
-            // Генерируем новый красивый Nice ID
-            const newNiceId = await generateNewNicePeerId();
-
-            if (newNiceId) {
-                peerIdInput.value = newNiceId;
-                currentProfile.nicePeerId = newNiceId;   // ← Важно: nicePeerId
-                console.log('✅ Новый Nice Peer ID успешно установлен:', newNiceId);
-            } else {
-                throw new Error('Не удалось сгенерировать Nice ID');
-            }
-
-        } catch (err) {
-            console.error('Ошибка при генерации Nice Peer ID:', err);
-            
-            let errorMsg = getTranslation('peer-init-error') || 'Не удалось сгенерировать ID. Проверьте интернет.';
-            
-            if (err.message.includes('unavailable')) {
-                errorMsg = getTranslation('peer-id-unavailable') || 'Этот @ID временно занят. Попробуйте ещё раз.';
-            }
-            
-            alert(errorMsg);
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.textContent = originalText;
-        }
-    });
-
     // Сохранение профиля
     saveBtn.addEventListener('click', saveProfile);
+
+    console.log('%c✅ profile.js инициализирован', 'color:#10b981; font-weight:700');
 }
 
 /**
- * Открывает модальное окно и заполняет все поля
+ * Открывает модальное окно профиля
  */
 function openProfileModal() {
     const modal = document.getElementById('profile-modal');
-    const urlInput = document.getElementById('avatar-url-input');
-    const preview = document.getElementById('preview-avatar');
     const peerIdInput = document.getElementById('profile-peer-id');
+    const generateBtn = document.getElementById('generate-peer-id');
 
-    // Заполняем обычные поля
+    // Заполняем данные профиля
     document.getElementById('profile-name').value = currentProfile.name || '';
     document.getElementById('profile-surname').value = currentProfile.surname || '';
     document.getElementById('profile-patronymic').value = currentProfile.patronymic || '';
     document.getElementById('profile-gender').value = currentProfile.gender || 'male';
     document.getElementById('profile-birthdate').value = currentProfile.birthdate || '';
-    
-    // Показываем красивый Nice Peer ID
-    peerIdInput.value = currentProfile.nicePeerId || getMyNicePeerId() || '';
 
     // URL аватара
+    const urlInput = document.getElementById('avatar-url-input');
     urlInput.value = currentProfile.avatarUrl || '';
 
     // Превью аватарки
@@ -124,12 +87,61 @@ function openProfileModal() {
         previewEl.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
     }
 
+    // === ПОКАЗЫВАЕМ ТЕКУЩИЙ REAL PEER ID ===
+    if (window.myRealPeerId) {
+        peerIdInput.value = window.myRealPeerId;
+        peerIdInput.title = "Текущий Real Peer ID — отправьте его другу для добавления в контакты";
+    } else {
+        peerIdInput.value = "Ожидание подключения...";
+        peerIdInput.title = "";
+    }
+
+    // Настраиваем кнопку — теперь она копирует Real ID
+    generateBtn.textContent = getTranslation('copy-real-id') || 'Копировать ID';
+    generateBtn.onclick = copyRealPeerId;        // динамически назначаем функцию копирования
+
     modal.style.display = 'flex';
     applyTranslations();
 }
 
 /**
- * Сохраняет профиль
+ * Копирует текущий Real Peer ID в буфер обмена
+ */
+async function copyRealPeerId() {
+    const realId = window.myRealPeerId;
+
+    if (!realId) {
+        alert('Real Peer ID ещё не получен.\nПодождите, пока установится соединение с сервером.');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(realId);
+
+        // Визуальная обратная связь
+        const btn = document.getElementById('generate-peer-id');
+        const originalText = btn.textContent;
+        
+        btn.textContent = '✓ Скопировано!';
+        btn.style.backgroundColor = '#4ade80';
+        btn.style.color = '#111';
+
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.style.backgroundColor = '';
+            btn.style.color = '';
+        }, 2000);
+
+        console.log('✅ Real Peer ID скопирован в буфер обмена:', realId);
+
+    } catch (err) {
+        console.error('Ошибка копирования в буфер:', err);
+        alert('Не удалось скопировать ID.\nПопробуйте выделить текст вручную (Ctrl+C).');
+    }
+}
+
+/**
+ * Сохраняет профиль (без Nice ID в этом поле)
  */
 function saveProfile() {
     currentProfile = {
@@ -139,7 +151,7 @@ function saveProfile() {
         gender: document.getElementById('profile-gender').value,
         birthdate: document.getElementById('profile-birthdate').value,
         avatarUrl: document.getElementById('avatar-url-input').value.trim(),
-        nicePeerId: document.getElementById('profile-peer-id').value.trim()   // ← nicePeerId
+        // nicePeerId здесь не сохраняем через это поле — он управляется в peer.js
     };
 
     localStorage.setItem('profile', JSON.stringify(currentProfile));
