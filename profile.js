@@ -51,37 +51,39 @@ export function initProfile() {
         }
     });
 
-    // === ГЕНЕРАЦИЯ PEER ID ТОЛЬКО ПО КНОПКЕ ===
+    // === ГЕНЕРАЦИЯ PEER ID ТОЛЬКО ПО КНОПКЕ (в формате @login-xxxxxxxx) ===
     generateBtn.addEventListener('click', async () => {
         const peerIdInput = document.getElementById('profile-peer-id');
-        const originalText = generateBtn.textContent;
+        const originalText = generateBtn.textContent || 'Получить @ID';
 
         try {
             generateBtn.disabled = true;
             generateBtn.textContent = getTranslation('loading') || 'Генерация...';
 
-            // Генерируем новый Peer ID в формате @login-xxxxxxxx
+            // ←←← Главное изменение: используем generateNewPeerId()
             const newPeerId = await generateNewPeerId();
 
             if (newPeerId) {
                 peerIdInput.value = newPeerId;
-                currentProfile.peerId = newPeerId; // сразу обновляем в текущем профиле
-                console.log('✅ Новый Peer ID успешно сгенерирован и сохранён:', newPeerId);
+                currentProfile.peerId = newPeerId;
+                console.log('✅ Новый Peer ID успешно установлен:', newPeerId);
             } else {
-                throw new Error('Не удалось сгенерировать Peer ID');
+                throw new Error('Не удалось получить Peer ID');
             }
 
         } catch (err) {
-            console.error('Ошибка генерации Peer ID:', err);
+            console.error('Ошибка при генерации Peer ID:', err);
             
-            if (err.message.includes('unavailable')) {
-                alert(getTranslation('peer-id-unavailable') || 'Этот ID временно занят. Попробуйте ещё раз.');
-            } else {
-                alert(getTranslation('peer-init-error') || 'Не удалось сгенерировать Peer ID. Проверьте интернет.');
+            let errorMsg = getTranslation('peer-init-error') || 'Не удалось сгенерировать Peer ID.';
+            
+            if (err.message.includes('unavailable') || err.message.includes('busy')) {
+                errorMsg = getTranslation('peer-id-unavailable') || 'Этот @ID временно занят. Нажмите кнопку ещё раз.';
             }
+            
+            alert(errorMsg);
         } finally {
             generateBtn.disabled = false;
-            generateBtn.textContent = originalText || getTranslation('generate-button') || 'Получить @ID';
+            generateBtn.textContent = originalText;
         }
     });
 
@@ -98,27 +100,26 @@ function openProfileModal() {
     const preview = document.getElementById('preview-avatar');
     const peerIdInput = document.getElementById('profile-peer-id');
 
-    // Заполняем обычные поля
+    // Заполняем поля
     document.getElementById('profile-name').value = currentProfile.name || '';
     document.getElementById('profile-surname').value = currentProfile.surname || '';
     document.getElementById('profile-patronymic').value = currentProfile.patronymic || '';
     document.getElementById('profile-gender').value = currentProfile.gender || 'male';
     document.getElementById('profile-birthdate').value = currentProfile.birthdate || '';
     
-    // Показываем текущий Peer ID (если есть)
+    // Peer ID
     peerIdInput.value = currentProfile.peerId || getMyPeerId() || '';
 
-    // URL аватара
+    // Аватар
     urlInput.value = currentProfile.avatarUrl || '';
-
-    // Превью аватарки
+    const previewEl = document.getElementById('preview-avatar');
     if (currentProfile.avatarUrl) {
-        preview.style.backgroundImage = `url(${currentProfile.avatarUrl})`;
-        preview.style.backgroundSize = 'cover';
-        preview.style.backgroundPosition = 'center';
+        previewEl.style.backgroundImage = `url(${currentProfile.avatarUrl})`;
+        previewEl.style.backgroundSize = 'cover';
+        previewEl.style.backgroundPosition = 'center';
     } else {
-        preview.style.backgroundImage = '';
-        preview.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
+        previewEl.style.backgroundImage = '';
+        previewEl.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
     }
 
     modal.style.display = 'flex';
@@ -168,6 +169,7 @@ function renderHeaderProfile() {
         usernameEl.setAttribute('data-i18n', 'default-username');
     }
 
+    // Аватар в шапке
     avatarEl.innerHTML = '';
     if (currentProfile.avatarUrl) {
         const img = document.createElement('img');
