@@ -1,6 +1,6 @@
 // chat.js — Чат с индикатором «Печатает» + полная поддержка data-i18n
 
-import { sendMessage, ensureConnection, sendTypingStatus } from './peer.js';
+import { sendMessage, ensureConnection, sendTypingStatus, connections } from './peer.js';
 import { applyTranslations, getTranslation } from './i18n.js';
 
 let currentChatPeerId = null;
@@ -180,14 +180,23 @@ function showTypingIndicator(show) {
 }
 
 // ====================== Обновление Real ID ======================
+/**
+ * Обновление real Peer ID друга (улучшенная версия)
+ */
 async function updateFriendRealId(newRealId) {
-    if (!currentContact) return;
+    if (!currentContact || !newRealId || newRealId.length < 10) {
+        alert('Некорректный Peer ID');
+        return;
+    }
 
-    console.log(`🔄 Обновляем real Peer ID: ${currentChatPeerId} → ${newRealId}`);
+    const oldRealId = currentChatPeerId;
+    console.log(`🔄 Обновляем real Peer ID друга: ${oldRealId} → ${newRealId}`);
 
+    // 1. Обновляем данные текущего чата
     currentContact.realPeerId = newRealId;
     currentChatPeerId = newRealId;
 
+    // 2. Обновляем отображение в шапке
     const displayEl = document.getElementById('chat-peer-id-display');
     if (displayEl) {
         displayEl.innerHTML = `
@@ -196,15 +205,33 @@ async function updateFriendRealId(newRealId) {
         `;
     }
 
+    // 3. Сохраняем в localStorage
     updateContactInStorage(currentContact);
 
+    // 4. Закрываем старое соединение (важно!)
+    const oldConn = connections.get(oldRealId);  // connections из peer.js (нужно импортировать)
+    if (oldConn) {
+        oldConn.close();
+        connections.delete(oldRealId);
+    }
+
+    // 5. Пытаемся подключиться к новому ID
     try {
         await ensureConnection(newRealId);
         updateChatStatus(true);
-        alert(`✅ Real ID успешно обновлён!`);
+        alert(`✅ Real ID друга обновлён на ${newRealId.slice(0,8)}...\n\nТеперь попросите друга тоже обновить ваш Real ID у себя (если он ещё использует старый).`);
+        
+        // Дополнительно: можно автоматически отправить своё текущее Real ID другу
+        setTimeout(() => {
+            if (sendMessage(newRealId, `> ${window.myRealPeerId}`)) {
+                console.log('Отправлено своё новое ID другу автоматически');
+            }
+        }, 800);
+
     } catch (err) {
+        console.error('Ошибка подключения к новому ID:', err);
         updateChatStatus(false);
-        alert(`Real ID обновлён, но подключиться не удалось.`);
+        alert(`Real ID обновлён, но подключиться не удалось.\n\nУбедитесь, что друг онлайн и тоже обновил ваш Real ID у себя.`);
     }
 }
 
