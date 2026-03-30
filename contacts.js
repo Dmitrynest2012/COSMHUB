@@ -1,15 +1,11 @@
-// contacts.js — Полная версия с Nice ID + история real ID (до 10 шт.)
+// contacts.js — Добавление по real Peer ID + хранение nicePeerId для красоты
 
 import { applyTranslations, getTranslation } from './i18n.js';
-import { 
-    connectByNiceId, 
-    getMyNicePeerId, 
-    getRealPeerIdsHistory 
-} from './peer.js';
+import { connectToPeer, getMyNicePeerId } from './peer.js';
 
 let contacts = [];
 
-// ====================== Загрузка и сохранение контактов ======================
+// ====================== Загрузка / Сохранение ======================
 function loadContacts() {
     const saved = localStorage.getItem('contacts');
     contacts = saved ? JSON.parse(saved) : [];
@@ -19,7 +15,7 @@ function saveContacts() {
     localStorage.setItem('contacts', JSON.stringify(contacts));
 }
 
-// ====================== Рендер списка контактов ======================
+// ====================== Рендер ======================
 function renderContacts() {
     const sidebarContent = document.getElementById('sidebar-content');
     if (!sidebarContent) return;
@@ -34,23 +30,24 @@ function renderContacts() {
 
     contacts.forEach((contact, index) => {
         const fullName = [contact.surname, contact.name, contact.patronymic]
-            .filter(Boolean).join(' ') || getTranslation('unknown-user') || 'Неизвестный';
+            .filter(Boolean).join(' ') || 'Неизвестный';
 
         const avatarStyle = contact.avatarUrl 
             ? `background-image: url(${contact.avatarUrl}); background-size: cover; background-position: center;` 
             : 'background: linear-gradient(135deg, #6b7ae3, #a78bfa);';
 
-        // Показываем красивый Nice ID
-        const displayId = contact.nicePeerId || contact.peerId || '—';
+        const displayId = contact.nicePeerId 
+            ? `${contact.nicePeerId} <span style="color:#888; font-size:0.85em;">(${contact.realPeerId?.slice(0,8)}...)</span>`
+            : contact.realPeerId || '—';
 
         html += `
-            <div class="contact-card" data-nice-id="${contact.nicePeerId || ''}" data-real-id="${contact.realPeerId || ''}">
+            <div class="contact-card" data-real-id="${contact.realPeerId}">
                 <div class="contact-avatar" style="${avatarStyle}"></div>
                 <div class="contact-info">
                     <div class="contact-name">${fullName}</div>
                     <div class="contact-peer-id">${displayId}</div>
                 </div>
-                <button class="remove-contact-btn" data-index="${index}" title="${getTranslation('delete') || 'Удалить'}">✕</button>
+                <button class="remove-contact-btn" data-index="${index}" title="Удалить">✕</button>
             </div>
         `;
     });
@@ -62,181 +59,131 @@ function renderContacts() {
     attachContactEvents();
 }
 
-// ====================== Привязка событий ======================
+// ====================== События ======================
 function attachContactEvents() {
     const addBtn = document.getElementById('add-contact-btn');
-    if (addBtn) {
-        addBtn.removeEventListener('click', openAddContactModal);
-        addBtn.addEventListener('click', openAddContactModal);
-    }
+    if (addBtn) addBtn.addEventListener('click', openAddContactModal);
 
     document.querySelectorAll('.remove-contact-btn').forEach(btn => {
-        btn.removeEventListener('click', handleRemoveClick);
-        btn.addEventListener('click', handleRemoveClick);
+        btn.addEventListener('click', (e) => {
+            e.stopImmediatePropagation();
+            removeContact(parseInt(e.currentTarget.dataset.index));
+        });
     });
 
     document.querySelectorAll('.contact-card').forEach(card => {
-        card.removeEventListener('click', handleContactClick);
-        card.addEventListener('click', handleContactClick);
+        card.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-contact-btn')) return;
+            const realId = e.currentTarget.dataset.realId;
+            const contact = contacts.find(c => c.realPeerId === realId);
+            if (contact) openChat(realId, contact);
+        });
     });
 }
 
-function handleRemoveClick(e) {
-    e.stopImmediatePropagation();
-    const index = parseInt(e.currentTarget.dataset.index);
-    if (!isNaN(index)) removeContact(index);
+function openChat(realPeerId, contact) {
+    import('./chat.js')
+        .then(module => module.openChat(realPeerId, contact))
+        .catch(err => console.error('Ошибка открытия чата:', err));
 }
 
-function handleContactClick(e) {
-    if (e.target.classList.contains('remove-contact-btn')) return;
-
-    const niceId = e.currentTarget.dataset.niceId;
-    const contact = contacts.find(c => c.nicePeerId === niceId);
-
-    if (contact && niceId) {
-        import('./chat.js')
-            .then(module => {
-                module.openChat(niceId, contact);   // передаём niceId
-            })
-            .catch(err => {
-                console.error('Ошибка загрузки чата:', err);
-                alert('Не удалось открыть чат');
-            });
-    }
-}
-
-// ====================== Модальное окно добавления ======================
+// ====================== Модальное окно ======================
 function openAddContactModal() {
     const modal = document.getElementById('add-contact-modal');
     if (!modal) return;
 
-    const searchResult = document.getElementById('search-result');
-    if (searchResult) searchResult.style.display = 'none';
-
-    const searchInput = document.getElementById('peer-search-input');
-    if (searchInput) searchInput.value = '';
-
+    document.getElementById('search-result').style.display = 'none';
+    document.getElementById('peer-search-input').value = '';
     modal.style.display = 'flex';
     applyTranslations();
 }
 
-// ====================== Поиск и добавление по Nice ID ======================
-async function searchPeer(peerIdStr) {
-    const trimmedId = (peerIdStr || '').trim();
-    if (!trimmedId) {
-        alert(getTranslation('enter-peer-id') || 'Введите Peer ID (начинается с @)');
+// ====================== Поиск по REAL Peer ID ======================
+async function searchPeer(inputStr) {
+    const peerIdStr = (inputStr || '').trim();
+    if (!peerIdStr) {
+        alert('Введите Peer ID друга');
         return;
     }
 
-    if (!trimmedId.startsWith('@')) {
-        alert('Nice ID должен начинаться с символа @');
+    // Если ввели nice ID — показываем предупреждение
+    if (peerIdStr.startsWith('@')) {
+        alert('Введите РЕАЛЬНЫЙ Peer ID друга (длинная строка без @).\n\nДруг может скопировать его из своего профиля.');
         return;
     }
 
-    console.log(`🔍 Поиск по Nice ID: ${trimmedId}`);
+    console.log(`🔍 Поиск по real Peer ID: ${peerIdStr}`);
 
     const resultContainer = document.getElementById('search-result');
-    if (resultContainer) resultContainer.style.display = 'none';
+    resultContainer.style.display = 'none';
 
     try {
-        // ←←← Главное изменение: используем connectByNiceId
-        const conn = await connectByNiceId(trimmedId);
+        const conn = await connectToPeer(peerIdStr);
 
-        console.log('✅ Соединение установлено с Nice ID:', trimmedId);
-
-        // Запрашиваем профиль
         conn.send({ type: 'getProfile' });
 
-        const profilePromise = new Promise((resolve) => {
-            const timeout = setTimeout(() => resolve(null), 8000);
-
-            conn.on('data', (data) => {
-                if (data.type === 'profileResponse' && data.profile) {
+        const profilePromise = new Promise(resolve => {
+            const timeout = setTimeout(() => resolve(null), 7000);
+            conn.on('data', data => {
+                if (data.type === 'profileResponse') {
                     clearTimeout(timeout);
                     resolve(data.profile);
                 }
             });
         });
 
-        const remoteProfile = await profilePromise;
+        const remoteProfile = await profilePromise || {};
 
-        // Заполняем результат поиска
-        const resultAvatar = document.getElementById('result-avatar');
-        const resultName = document.getElementById('result-name');
-        const resultPeerIdEl = document.getElementById('result-peer-id');
-        const resultStatus = document.getElementById('result-status');
+        // Заполняем результат
+        document.getElementById('result-avatar').style.backgroundImage = remoteProfile.avatarUrl 
+            ? `url(${remoteProfile.avatarUrl})` 
+            : '';
+        document.getElementById('result-avatar').style.background = remoteProfile.avatarUrl ? '' : 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
+
+        document.getElementById('result-name').textContent = 
+            [remoteProfile.surname, remoteProfile.name, remoteProfile.patronymic].filter(Boolean).join(' ') || 'Пользователь';
+
+        document.getElementById('result-peer-id').textContent = peerIdStr;
+
+        resultContainer.style.display = 'block';
+
+        // Кнопка добавить
         const addBtn = document.getElementById('add-contact-confirm-btn');
+        const newBtn = addBtn.cloneNode(true);
+        addBtn.parentNode.replaceChild(newBtn, addBtn);
 
-        if (resultAvatar) {
-            if (remoteProfile?.avatarUrl) {
-                resultAvatar.style.backgroundImage = `url(${remoteProfile.avatarUrl})`;
-                resultAvatar.style.backgroundSize = 'cover';
-                resultAvatar.style.backgroundPosition = 'center';
-            } else {
-                resultAvatar.style.background = 'linear-gradient(135deg, #6b7ae3, #a78bfa)';
-            }
-        }
-
-        if (resultName) {
-            const fullName = [
-                remoteProfile?.surname,
-                remoteProfile?.name,
-                remoteProfile?.patronymic
-            ].filter(Boolean).join(' ') || 'Пользователь онлайн';
-            resultName.textContent = fullName;
-        }
-
-        if (resultPeerIdEl) resultPeerIdEl.textContent = trimmedId;
-
-        if (resultStatus) {
-            resultStatus.textContent = getTranslation('status-online') || 'В сети';
-            resultStatus.className = 'status-text status-online';
-        }
-
-        if (resultContainer) resultContainer.style.display = 'block';
-
-        // Кнопка "Добавить"
-        if (addBtn) {
-            const newAddBtn = addBtn.cloneNode(true);
-            addBtn.parentNode.replaceChild(newAddBtn, addBtn);
-
-            newAddBtn.addEventListener('click', () => {
-                addContact({
-                    nicePeerId: trimmedId,                    // основной идентификатор
-                    realPeerId: conn.peer,                    // последний успешный real ID
-                    name: remoteProfile?.name || '',
-                    surname: remoteProfile?.surname || '',
-                    patronymic: remoteProfile?.patronymic || '',
-                    avatarUrl: remoteProfile?.avatarUrl || ''
-                });
-                document.getElementById('add-contact-modal').style.display = 'none';
+        newBtn.addEventListener('click', () => {
+            addContact({
+                realPeerId: peerIdStr,
+                nicePeerId: remoteProfile.niceId || remoteProfile.peerId || null, // если друг тоже использует nice
+                name: remoteProfile.name || '',
+                surname: remoteProfile.surname || '',
+                patronymic: remoteProfile.patronymic || '',
+                avatarUrl: remoteProfile.avatarUrl || ''
             });
-        }
+            document.getElementById('add-contact-modal').style.display = 'none';
+        });
 
     } catch (err) {
-        console.error('❌ Ошибка поиска по Nice ID:', err);
-        const msg = err.message || getTranslation('peer-offline') || 'Пользователь не в сети или Nice ID неверный';
-        alert(msg);
+        console.error(err);
+        alert(err.message || 'Не удалось подключиться. Проверьте, что друг онлайн и ввёл правильный Peer ID.');
     }
 }
 
-// ====================== Добавление и удаление контактов ======================
-function addContact(user) {
-    // Проверяем по nicePeerId
-    if (contacts.some(c => c.nicePeerId === user.nicePeerId)) {
-        alert(getTranslation('contact-already-exists') || 'Этот контакт уже добавлен');
+// ====================== Добавление контакта ======================
+function addContact(userData) {
+    if (contacts.some(c => c.realPeerId === userData.realPeerId)) {
+        alert('Этот контакт уже добавлен');
         return;
     }
 
-    contacts.push(user);
+    contacts.push(userData);
     saveContacts();
     renderContacts();
-
-    console.log('✅ Контакт добавлен:', user.nicePeerId);
 }
 
 function removeContact(index) {
-    if (confirm(getTranslation('delete-contact-confirm') || 'Удалить контакт?')) {
+    if (confirm('Удалить контакт?')) {
         contacts.splice(index, 1);
         saveContacts();
         renderContacts();
@@ -253,24 +200,16 @@ export function initContacts() {
     const searchBtn = document.getElementById('search-peer-btn');
     const searchInput = document.getElementById('peer-search-input');
 
-    if (closeBtn && modal) {
-        closeBtn.addEventListener('click', () => modal.style.display = 'none');
-    }
-
-    if (modal) {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) modal.style.display = 'none';
-        });
-    }
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.style.display = 'none');
+    if (modal) modal.addEventListener('click', e => { if (e.target === modal) modal.style.display = 'none'; });
 
     if (searchBtn && searchInput) {
         searchBtn.addEventListener('click', () => searchPeer(searchInput.value));
-        searchInput.addEventListener('keypress', (e) => {
+        searchInput.addEventListener('keypress', e => {
             if (e.key === 'Enter') searchPeer(searchInput.value);
         });
     }
 
     console.log('%c✅ contacts.js инициализирован', 'color:#10b981; font-weight:700');
     console.log('Мой Nice ID:', getMyNicePeerId());
-    console.log('История real ID:', getRealPeerIdsHistory().length, 'шт.');
 }
