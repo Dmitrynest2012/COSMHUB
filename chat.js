@@ -13,7 +13,6 @@ const TYPING_TIMEOUT = 1500;
 
 // ====================== Открытие чата ======================
 export function openChat(realPeerId, contact) {
-    // Защита: если чат уже открыт с этим же ID — ничего не делаем
     if (currentChatPeerId === realPeerId && currentContact?.realPeerId === realPeerId) {
         console.log('Чат уже открыт с этим Real ID');
         return;
@@ -47,9 +46,7 @@ export function openChat(realPeerId, contact) {
                 </div>
 
                 <div class="chat-header-actions">
-                    <button id="share-my-id-btn" class="share-id-btn" title="Поделиться моим Real ID">
-                        📤
-                    </button>
+                    <button id="share-my-id-btn" class="share-id-btn" title="Поделиться моим Real ID">📤</button>
                     <div class="chat-status">
                         <span id="chat-status-dot" class="status-dot offline"></span>
                         <span id="chat-status-text" class="status-text" data-i18n="status-offline">Офлайн</span>
@@ -60,12 +57,9 @@ export function openChat(realPeerId, contact) {
 
             <div id="chat-messages" class="chat-messages"></div>
 
-            <!-- Индикатор печати -->
             <div id="typing-indicator" class="typing-indicator" style="display: none;">
                 <span data-i18n="typing">Печатает</span>
-                <span class="typing-dots">
-                    <span>.</span><span>.</span><span>.</span>
-                </span>
+                <span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>
             </div>
 
             <div class="chat-input-area">
@@ -87,11 +81,13 @@ export function openChat(realPeerId, contact) {
 // ====================== Инициализация соединения ======================
 async function initChatConnection(peerId) {
     try {
+        console.log(`🔄 Инициализация соединения с ${peerId}`);
         await ensureConnection(peerId);
         updateChatStatus(true);
+        console.log(`✅ Соединение установлено с ${peerId}`);
     } catch (err) {
+        console.warn('Не удалось установить соединение:', err);
         updateChatStatus(false);
-        console.warn('Не удалось установить соединение с собеседником');
     }
 }
 
@@ -111,14 +107,13 @@ function updateChatStatus(isOnline) {
     }
 }
 
-// ====================== Слушатели событий ======================
+// ====================== Слушатели ======================
 function setupChatListeners() {
     const input = document.getElementById('chat-input');
     const sendBtn = document.getElementById('send-message-btn');
     const closeBtn = document.getElementById('close-chat-btn');
     const shareBtn = document.getElementById('share-my-id-btn');
 
-    // Отправка сообщения
     const send = async () => {
         const text = input.value.trim();
         if (!text || !currentChatPeerId) return;
@@ -134,12 +129,13 @@ function setupChatListeners() {
             return;
         }
 
-        if (sendMessage(currentChatPeerId, text)) {
+        const sent = sendMessage(currentChatPeerId, text);
+        if (sent) {
             addMessage(currentChatPeerId, text, true);
             input.value = '';
             stopTyping();
         } else {
-            alert('Не удалось отправить сообщение — соединение потеряно. Попробуйте обновить ID друга.');
+            alert('Не удалось отправить сообщение. Соединение потеряно.');
         }
     };
 
@@ -151,58 +147,48 @@ function setupChatListeners() {
         }
     });
 
-    // Печать (typing)
+    // Typing
     input.addEventListener('input', () => {
         if (currentChatPeerId) startTyping();
     });
     input.addEventListener('blur', stopTyping);
 
-    // Кнопка "Поделиться моим Real ID"
-    if (shareBtn) {
-        shareBtn.addEventListener('click', shareMyRealId);
-    }
+    if (shareBtn) shareBtn.addEventListener('click', shareMyRealId);
 
     closeBtn.addEventListener('click', closeChat);
 }
 
-// ====================== Кнопка "Поделиться моим Real ID" ======================
+// ====================== Поделиться Real ID ======================
 async function shareMyRealId() {
     const myId = window.myRealPeerId;
     if (!myId) {
-        alert('Ваш Real Peer ID ещё не получен. Подождите подключения.');
+        alert('Ваш Real Peer ID ещё не получен.');
         return;
     }
 
     const textToCopy = `> ${myId}`;
-
     try {
         await navigator.clipboard.writeText(textToCopy);
-
         const btn = document.getElementById('share-my-id-btn');
-        const originalText = btn.textContent;
-        
+        const original = btn.textContent;
         btn.textContent = '✓';
         btn.style.backgroundColor = '#4ade80';
 
         setTimeout(() => {
-            btn.textContent = originalText;
+            btn.textContent = original;
             btn.style.backgroundColor = '';
         }, 1800);
 
-        alert(`Скопировано:\n\n${textToCopy}\n\nОтправьте это другу — он сможет быстро обновить ваш ID.`);
-
+        alert(`Скопировано:\n\n${textToCopy}\n\nОтправьте это другу.`);
     } catch (err) {
-        console.error('Ошибка копирования:', err);
         alert(`Не удалось скопировать.\n\nСкопируйте вручную:\n> ${myId}`);
     }
 }
 
-// ====================== Статус "Печатает" ======================
+// ====================== Typing ======================
 function startTyping() {
     if (typingTimer) clearTimeout(typingTimer);
-    
     sendTypingStatus(currentChatPeerId, true);
-
     typingTimer = setTimeout(() => stopTyping(), TYPING_TIMEOUT);
 }
 
@@ -216,22 +202,20 @@ function stopTyping() {
 
 function showTypingIndicator(show) {
     const indicator = document.getElementById('typing-indicator');
-    if (!indicator) return;
-    indicator.style.display = show ? 'flex' : 'none';
+    if (indicator) indicator.style.display = show ? 'flex' : 'none';
 }
 
-// ====================== Обновление Real ID друга (улучшенная версия) ======================
+// ====================== Обновление Real ID друга ======================
 async function updateFriendRealId(newRealId) {
     if (!currentContact) return;
 
     const oldRealId = currentChatPeerId;
-    console.log(`🔄 Обновляем real Peer ID друга: ${oldRealId} → ${newRealId}`);
+    console.log(`🔄 Обновляем Real ID: ${oldRealId} → ${newRealId}`);
 
-    // Обновляем данные
     currentContact.realPeerId = newRealId;
     currentChatPeerId = newRealId;
 
-    // Обновляем отображение в шапке
+    // Обновляем отображение
     const displayEl = document.getElementById('chat-peer-id-display');
     if (displayEl) {
         displayEl.innerHTML = `
@@ -243,7 +227,7 @@ async function updateFriendRealId(newRealId) {
     updateContactInStorage(currentContact);
 
     // Закрываем старое соединение
-    if (connections && connections.has(oldRealId)) {
+    if (connections.has(oldRealId)) {
         const oldConn = connections.get(oldRealId);
         if (oldConn) oldConn.close();
         connections.delete(oldRealId);
@@ -253,40 +237,31 @@ async function updateFriendRealId(newRealId) {
         await ensureConnection(newRealId);
         updateChatStatus(true);
 
-        alert(`✅ Real ID друга успешно обновлён!\n\n` +
-              `Новый ID: ${newRealId}\n\n` +
-              `Теперь попробуйте отправить сообщение.\n` +
-              `Если сообщения всё равно не доходят — переоткройте чат.`);
+        alert('✅ Real ID обновлён! Теперь можно отправлять сообщения.');
 
-        // Ключевое улучшение: переоткрываем чат по новому ID
         setTimeout(() => {
             openChat(newRealId, currentContact);
         }, 700);
-
     } catch (err) {
-        console.error('Ошибка подключения к новому ID:', err);
         updateChatStatus(false);
-        alert(`Real ID обновлён, но подключиться не удалось.\n\n` +
-              `Убедитесь, что друг онлайн и у него тоже стоит ваш актуальный Real ID.`);
+        alert('Real ID обновлён, но подключиться не удалось.');
     }
 }
 
 function updateContactInStorage(updatedContact) {
     let contacts = JSON.parse(localStorage.getItem('contacts') || '[]');
-    
     const index = contacts.findIndex(c => 
-        (c.realPeerId === updatedContact.realPeerId) || 
+        c.realPeerId === updatedContact.realPeerId || 
         (c.nicePeerId && c.nicePeerId === updatedContact.nicePeerId)
     );
 
     if (index !== -1) {
         contacts[index] = { ...contacts[index], ...updatedContact };
         localStorage.setItem('contacts', JSON.stringify(contacts));
-        console.log('✅ Контакт обновлён в хранилище');
     }
 }
 
-// ====================== Работа с сообщениями ======================
+// ====================== Сообщения ======================
 function renderMessages(peerId) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
@@ -296,20 +271,14 @@ function renderMessages(peerId) {
     const msgList = messages[peerId] || [];
     msgList.forEach(msg => {
         const isMine = msg.from === window.myRealPeerId || msg.from === window.myPeerId;
-        const time = new Date(msg.timestamp).toLocaleTimeString([], { 
-            hour: '2-digit', minute: '2-digit' 
-        });
-
-        const senderText = isMine 
-            ? (getTranslation('you') || 'Вы') 
-            : (getTranslation('interlocutor') || 'Собеседник');
+        const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         container.innerHTML += `
             <div class="message ${isMine ? 'message-mine' : 'message-their'}">
                 ${!isMine ? `<div class="message-avatar"></div>` : ''}
                 <div class="message-content">
                     <div class="message-header">
-                        <span class="message-sender">${senderText}</span>
+                        <span class="message-sender">${isMine ? 'Вы' : 'Собеседник'}</span>
                         <span class="message-time">${time}</span>
                     </div>
                     <div class="message-text">${msg.text}</div>
@@ -352,13 +321,12 @@ function highlightActiveContact(peerId) {
 function closeChat() {
     currentChatPeerId = null;
     currentContact = null;
-
     document.querySelectorAll('.contact-card').forEach(c => c.classList.remove('active-contact'));
 
     const main = document.getElementById('main-content');
     main.innerHTML = `
         <div class="welcome-block">
-            <h2 data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
+            <h2 data-i18n="welcome">Добро пожаловать в мессенджер!</h2>
             <p class="placeholder-text">Выберите контакт для начала общения</p>
         </div>
     `;
