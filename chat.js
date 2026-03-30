@@ -13,6 +13,12 @@ const TYPING_TIMEOUT = 1500;
 
 // ====================== Открытие чата ======================
 export function openChat(realPeerId, contact) {
+    // Защита: если чат уже открыт с этим же ID — ничего не делаем
+    if (currentChatPeerId === realPeerId && currentContact?.realPeerId === realPeerId) {
+        console.log('Чат уже открыт с этим Real ID');
+        return;
+    }
+
     currentChatPeerId = realPeerId;
     currentContact = { ...contact };
 
@@ -133,7 +139,7 @@ function setupChatListeners() {
             input.value = '';
             stopTyping();
         } else {
-            alert('Не удалось отправить сообщение — соединение потеряно.');
+            alert('Не удалось отправить сообщение — соединение потеряно. Попробуйте обновить ID друга.');
         }
     };
 
@@ -183,10 +189,7 @@ async function shareMyRealId() {
             btn.style.backgroundColor = '';
         }, 1800);
 
-        alert(`Скопировано в буфер обмена:\n\n${textToCopy}\n\n` +
-              `Отправьте это сообщение другу — он сможет быстро обновить ваш Real ID у себя.`);
-
-        console.log('✅ Поделился своим Real ID:', textToCopy);
+        alert(`Скопировано:\n\n${textToCopy}\n\nОтправьте это другу — он сможет быстро обновить ваш ID.`);
 
     } catch (err) {
         console.error('Ошибка копирования:', err);
@@ -217,16 +220,18 @@ function showTypingIndicator(show) {
     indicator.style.display = show ? 'flex' : 'none';
 }
 
-// ====================== Обновление Real ID друга ======================
+// ====================== Обновление Real ID друга (улучшенная версия) ======================
 async function updateFriendRealId(newRealId) {
     if (!currentContact) return;
 
     const oldRealId = currentChatPeerId;
     console.log(`🔄 Обновляем real Peer ID друга: ${oldRealId} → ${newRealId}`);
 
+    // Обновляем данные
     currentContact.realPeerId = newRealId;
     currentChatPeerId = newRealId;
 
+    // Обновляем отображение в шапке
     const displayEl = document.getElementById('chat-peer-id-display');
     if (displayEl) {
         displayEl.innerHTML = `
@@ -248,13 +253,21 @@ async function updateFriendRealId(newRealId) {
         await ensureConnection(newRealId);
         updateChatStatus(true);
 
-        alert(`✅ Real ID друга обновлён!\n\n` +
-              `Теперь попросите друга обновить ваш Real ID.\n` +
-              `Он может просто вставить в чат:\n> ${window.myRealPeerId}`);
+        alert(`✅ Real ID друга успешно обновлён!\n\n` +
+              `Новый ID: ${newRealId}\n\n` +
+              `Теперь попробуйте отправить сообщение.\n` +
+              `Если сообщения всё равно не доходят — переоткройте чат.`);
+
+        // Ключевое улучшение: переоткрываем чат по новому ID
+        setTimeout(() => {
+            openChat(newRealId, currentContact);
+        }, 700);
 
     } catch (err) {
+        console.error('Ошибка подключения к новому ID:', err);
         updateChatStatus(false);
-        alert(`Real ID обновлён, но подключение не установлено.\n\nУбедитесь, что друг онлайн и тоже обновил ваш ID.`);
+        alert(`Real ID обновлён, но подключиться не удалось.\n\n` +
+              `Убедитесь, что друг онлайн и у него тоже стоит ваш актуальный Real ID.`);
     }
 }
 
@@ -269,10 +282,11 @@ function updateContactInStorage(updatedContact) {
     if (index !== -1) {
         contacts[index] = { ...contacts[index], ...updatedContact };
         localStorage.setItem('contacts', JSON.stringify(contacts));
+        console.log('✅ Контакт обновлён в хранилище');
     }
 }
 
-// ====================== Сообщения ======================
+// ====================== Работа с сообщениями ======================
 function renderMessages(peerId) {
     const container = document.getElementById('chat-messages');
     if (!container) return;
@@ -323,7 +337,7 @@ export function addMessage(peerId, text, isMine = true) {
 
 window.handleIncomingMessage = (peerId, data) => {
     if (data.type === 'message') {
-        addMessage(peerId, data.message.text || data.text, false);
+        addMessage(peerId, data.message?.text || data.text, false);
     } else if (data.type === 'typing') {
         showTypingIndicator(data.isTyping);
     }
