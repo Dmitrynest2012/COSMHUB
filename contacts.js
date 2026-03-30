@@ -1,6 +1,7 @@
 // contacts.js — Управление контактами (упрощённый вид карточек)
 
 import { applyTranslations, getTranslation } from './i18n.js';
+import { connectToPeer } from './peer.js';        // ← Добавили этот импорт
 
 let contacts = [];
 
@@ -80,6 +81,7 @@ function attachContactEvents() {
     });
 }
 
+// Динамический импорт чата (лучше не импортировать статически, чтобы избежать циклических зависимостей)
 function openChat(realPeerId, contact) {
     import('./chat.js')
         .then(module => module.openChat(realPeerId, contact))
@@ -117,7 +119,7 @@ async function searchPeer(inputStr) {
     resultContainer.style.display = 'none';
 
     try {
-        const conn = await connectToPeer(peerIdStr);   // из peer.js
+        const conn = await connectToPeer(peerIdStr);   // Теперь функция импортирована
 
         conn.send({ type: 'getProfile' });
 
