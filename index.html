@@ -3,23 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-i18n="app-title">Мессенджер</title>
-    <link rel="stylesheet" href="styles.css">
+    <title data-i18n="app-title">Сфера</title>
+    <link rel="icon" href="assets/sphere.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="css/theme.css">
+    <link rel="stylesheet" href="css/base.css">
+    <link rel="stylesheet" href="css/header.css">
+    <link rel="stylesheet" href="css/menu.css">
+    <link rel="stylesheet" href="css/sidebar.css">
+    <link rel="stylesheet" href="css/contacts.css">
+    <link rel="stylesheet" href="css/chat.css">
+    <link rel="stylesheet" href="css/modals.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
 </head>
 <body>
-    <!-- Хедер (без изменений) -->
     <header class="header">
         <div class="header-container">
             <div class="header-left">
-                <button id="sidebar-toggle" class="toggle-btn">☰</button>
-                <h1 data-i18n="app-title" class="app-title">Мессенджер</h1>
+                <button id="sidebar-toggle" class="toggle-btn" aria-label="Сайдбар" aria-expanded="true">☰</button>
+                <img class="brand-icon" src="assets/sphere.svg" alt="">
+                <h1 data-i18n="app-title" class="app-title">Сфера</h1>
             </div>
             <div class="header-right">
                 <div id="user-block" class="user-block">
                     <div id="header-avatar" class="avatar-circle"></div>
                     <span id="header-username" class="username" data-i18n="default-username">Пользователь</span>
-                    <button id="menu-toggle" class="menu-arrow">▼</button>
+                    <button id="menu-toggle" class="menu-arrow" aria-expanded="false">▼</button>
                 </div>
             </div>
         </div>
@@ -40,7 +48,7 @@
                     <input type="checkbox" id="theme-toggle">
                     <span class="slider"></span>
                 </label>
-                <span id="theme-text">Светлая</span>
+                <span id="theme-text" class="theme-label-text">Светлая</span>
             </div>
         </div>
     </header>
@@ -54,89 +62,73 @@
 
         <main id="main-content" class="main-content">
             <div class="welcome-block">
-                <h2 id="welcome-text" data-i18n="welcome" class="welcome-text">Добро пожаловать в мессенджер!</h2>
-                <p class="placeholder-text">Здесь будет чат. Функционал мессенджера пока не реализован.</p>
+                <h2 id="welcome-text" data-i18n="welcome" class="welcome-text">Добро пожаловать в Сферу</h2>
+                <p class="placeholder-text" data-i18n="welcome-hint">Выберите контакт, чтобы начать общение</p>
             </div>
         </main>
     </div>
 
-    <!-- Модальное окно профиля (обновлённая версия) -->
-<div id="profile-modal" class="modal">
-    <div class="modal-content profile-modal-layout">
-        <button id="modal-close" class="modal-close">✕</button>
-        <h2 data-i18n="profile-title" class="modal-title">Редактирование профиля</h2>
+    <div id="profile-modal" class="modal">
+        <div class="modal-content profile-modal-layout">
+            <button id="modal-close" class="modal-close">✕</button>
+            <h2 data-i18n="profile-title" class="modal-title">Редактирование профиля</h2>
 
-        <div class="profile-form">
-            <!-- Большая аватарка слева -->
-            <div class="avatar-section">
-                <div id="preview-avatar" class="avatar-circle-large"></div>
+            <div class="profile-form">
+                <div class="avatar-section">
+                    <div id="preview-avatar" class="avatar-circle-large"></div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-group">
+                        <label data-i18n="avatar-url-label">URL аватара</label>
+                        <input type="text" id="avatar-url-input" placeholder="https://example.com/avatar.jpg">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label data-i18n="surname-label">Фамилия</label>
+                            <input type="text" id="profile-surname">
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="first-name-label">Имя</label>
+                            <input type="text" id="profile-name">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label data-i18n="patronymic-label">Отчество</label>
+                        <input type="text" id="profile-patronymic">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label data-i18n="gender-label">Пол</label>
+                            <select id="profile-gender">
+                                <option value="male" data-i18n="gender-male">Мужской</option>
+                                <option value="female" data-i18n="gender-female">Женский</option>
+                                <option value="other" data-i18n="gender-other">Другой</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label data-i18n="birth-date-label">Дата рождения</label>
+                            <input type="date" id="profile-birthdate">
+                        </div>
+                    </div>
+
+                    <div class="form-group peer-id-group">
+                        <label data-i18n="peer-id-label">Пиринг-идентификатор</label>
+                        <div class="peer-id-wrapper">
+                            <input type="text" id="profile-peer-id" readonly data-i18n-placeholder="peer-id-placeholder" placeholder="Нажмите «Получить»">
+                            <button id="generate-peer-id" class="generate-btn" data-i18n="generate-button">Получить</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Поля формы справа -->
-            <div class="form-section">
-                <div class="form-group">
-                    <label data-i18n="avatar-url-label">URL аватара</label>
-                    <input type="text" id="avatar-url-input" placeholder="https://example.com/avatar.jpg">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label data-i18n="surname-label">Фамилия</label>
-                        <input type="text" id="profile-surname">
-                    </div>
-                    <div class="form-group">
-                        <label data-i18n="first-name-label">Имя</label>
-                        <input type="text" id="profile-name">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label data-i18n="patronymic-label">Отчество</label>
-                    <input type="text" id="profile-patronymic">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label data-i18n="gender-label">Пол</label>
-                        <select id="profile-gender">
-                            <option value="male" data-i18n="gender-male">Мужской</option>
-                            <option value="female" data-i18n="gender-female">Женский</option>
-                            <option value="other" data-i18n="gender-other">Другой</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label data-i18n="birth-date-label">Дата рождения</label>
-                        <input type="date" id="profile-birthdate">
-                    </div>
-                </div>
-
-                <!-- Новое поле: Пиринг-идентификатор -->
-<div class="form-group peer-id-group">
-    <label data-i18n="peer-id-label">Пиринг-идентификатор</label>
-    <div class="peer-id-wrapper">
-        <input 
-            type="text" 
-            id="profile-peer-id" 
-            readonly 
-            data-i18n-placeholder="peer-id-placeholder"
-            placeholder="Нажмите «Получить»">
-        <button 
-            id="generate-peer-id" 
-            class="generate-btn"
-            data-i18n="generate-button">
-            Получить
-        </button>
-    </div>
-</div>
-            </div>
+            <button id="save-profile-btn" data-i18n="save-button" class="save-btn">Сохранить</button>
         </div>
-
-        <!-- Кнопка сохранить под аватаркой -->
-        <button id="save-profile-btn" data-i18n="save-button" class="save-btn">Сохранить</button>
     </div>
-</div>
 
-<!-- Новое модальное окно: Добавить контакт -->
     <div id="add-contact-modal" class="modal">
         <div class="modal-content add-contact-modal">
             <button id="add-contact-close" class="modal-close">✕</button>
@@ -145,14 +137,11 @@
             <div class="search-section">
                 <label data-i18n="peer-id-search-label">Поиск по пиринг-идентификатору</label>
                 <div class="search-input-wrapper">
-                    <input type="text" id="peer-search-input" 
-                           data-i18n-placeholder="peer-search-placeholder"
-                           placeholder="Введите Peer ID...">
+                    <input type="text" id="peer-search-input" data-i18n-placeholder="peer-search-placeholder" placeholder="Введите Peer ID...">
                     <button id="search-peer-btn" class="search-btn" data-i18n="search-button">Найти</button>
                 </div>
             </div>
 
-            <!-- Результат поиска -->
             <div id="search-result" class="search-result" style="display: none;">
                 <div class="user-card">
                     <div id="result-avatar" class="avatar-circle-medium"></div>
@@ -167,6 +156,6 @@
         </div>
     </div>
 
-    <script type="module" src="main.js"></script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9e41827abef38c44',t:'MTc3NDgxNDkzOQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+    <script type="module" src="js/main.js"></script>
+</body>
 </html>
