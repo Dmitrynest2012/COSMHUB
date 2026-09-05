@@ -1,0 +1,117 @@
+.header {
+    height: 68px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    position: relative;
+    z-index: 100;
+}
+
+.header-container {
+    max-width: 100%;
+    margin: 0 auto;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.app-title {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+}
+
+.brand-icon {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    display: block;
+    flex-shrink: 0;
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.toggle-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.25s var(--theme-ease), color 0.25s var(--theme-ease);
+}
+
+.toggle-btn:hover {
+    background: var(--card-hover);
+}
+
+.header-right .user-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 9999px;
+    transition: background-color 0.25s var(--theme-ease);
+}
+
+.header-right .user-block:hover {
+    background: var(--card-hover);
+}
+
+.avatar-circle {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--lavender));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    box-shadow: 0 4px 12px -2px rgb(107 122 227 / 0.3);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.avatar-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.username {
+    font-weight: 500;
+    font-size: 17px;
+    white-space: nowrap;
+}
+
+.menu-arrow {
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: var(--text-color);
+    cursor: pointer;
+    padding: 4px 8px;
+    transition: transform var(--menu-duration) var(--theme-ease);
+}
+
+.menu-arrow.is-open {
+    transform: rotate(180deg);
+}

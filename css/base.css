@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Play:wght@400;500;600&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Play', system-ui, -apple-system, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app-container {
+    display: flex;
+    height: calc(100vh - 68px);
+    overflow: hidden;
+}
+
+.main-content {
+    flex: 1;
+    background: var(--bg-color);
+    padding: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
+}
+
+.welcome-block {
+    text-align: center;
+    max-width: 420px;
+}
+
+.welcome-text {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    background: linear-gradient(90deg, var(--accent), var(--lavender));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.placeholder-text {
+    color: var(--muted-text);
+    font-size: 17px;
+}
